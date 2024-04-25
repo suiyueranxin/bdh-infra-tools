@@ -1,0 +1,30 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ansible-runtime-base:latest
+
+ARG KUBECTL_CLI_VERSION=1.10.3
+ARG HELM_VERSION=2.8.2
+ARG INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME=public.int.repositories.cloud.sap
+ARG INTERNAL_DOCKER_REGISTRY_PORT=443
+
+# Install kubectl
+RUN curl -Lo /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v$KUBECTL_CLI_VERSION/bin/linux/amd64/kubectl
+RUN chmod +x /usr/local/bin/kubectl
+
+# Install Helm
+RUN curl -Lo /tmp/helm-linux-amd64.tar.gz https://kubernetes-helm.storage.googleapis.com/helm-v$HELM_VERSION-linux-amd64.tar.gz
+RUN tar -xvf /tmp/helm-linux-amd64.tar.gz -C /tmp/
+RUN chmod +x  /tmp/linux-amd64/helm && sudo mv /tmp/linux-amd64/helm /usr/local/bin/
+
+RUN pip install awscli --upgrade --user && \
+    apt-get install -y awscli && \
+    apt-get install -y jq
+
+RUN rm /usr/bin/aws && \
+    ln -s /root/.local/bin/aws /usr/bin/aws
+
+# Install kops
+RUN curl -Lo /usr/local/bin/kops https://github.com/kubernetes/kops/releases/download/1.9.0/kops-linux-amd64 && \
+    chmod +x /usr/local/bin/kops
+
+RUN openssl s_client -connect ${INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME}:${INTERNAL_DOCKER_REGISTRY_PORT} -showcerts </dev/null 2>/dev/null | openssl x509 -outform PEM | tee /usr/local/share/ca-certificates/${INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME}.crt
+RUN update-ca-certificates
+

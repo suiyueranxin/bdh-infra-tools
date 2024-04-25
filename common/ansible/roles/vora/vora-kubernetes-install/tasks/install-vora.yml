@@ -1,0 +1,390 @@
+---
+- name: Get SAPDataHub-Foundation folder name
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder
+  tags:
+    - install
+    - update
+
+# the format of limit_services and skip_services is as: "vora-operator, vora-security"
+# the limit_services and skip_services will be replaced as: "--limit-service=vora-operator --limit-service=vora-security"
+# the skip_services has higher priority than limit_services
+
+- name: set checkpoint option
+  set_fact:
+    checkpoint_option: "--enable-checkpoint-store=yes \
+                        --checkpoint-store-type=webhdfs \
+                        --checkpoint-store-connection='{{hdfs_url}}' \
+                        --validate-checkpoint-store=yes"
+  when: enable_storage_checkpoint == "yes"
+  tags:
+    - install
+    - update
+
+- name: set checkpoint option
+  set_fact:
+    checkpoint_option: "--enable-checkpoint-store=no"
+  when: enable_storage_checkpoint != "yes"
+  tags:
+    - install
+    - update
+
+- name: set vsystem-use-external-auth option
+  set_fact:
+    vsystem_use_external_auth_option: "--vsystem-use-external-auth"
+  when: vsystem_use_external_auth == "yes"
+  tags:
+    - install
+    - update
+
+- name: set vsystem-use-external-auth option
+  set_fact:
+    vsystem_use_external_auth_option: " "
+  when: vsystem_use_external_auth != "yes"
+  tags:
+    - install
+    - update
+
+- name: set enable-network-policies option
+  set_fact:
+    enable_network_policies_option: " "
+  when: enable_network_policies != "yes"
+  tags:
+    - install
+    - update
+
+- name: set enable-network-policies option
+  set_fact:
+    enable_network_policies_option: "--enable-network-policies=yes"
+  when: enable_network_policies == "yes"
+  tags:
+    - install
+    - update
+
+- name: set enable-kaniko option to empty
+  set_fact:
+    enable_kaniko_option: " "
+  when: enable_kaniko != "yes" and enable_kaniko != "no"
+  tags:
+    - install
+
+- name: set enable-kaniko to yes
+  set_fact:
+    enable_kaniko_option: "--enable-kaniko=yes"
+  when: enable_kaniko == "yes"
+  tags:
+    - install
+
+- name: set enable-kaniko to no
+  set_fact:
+    enable_kaniko_option: "--enable-kaniko=no"
+  when: enable_kaniko == "no"
+  tags:
+    - install
+
+- name: make save images folder
+  file:
+    path: "{{images_save_path}}"
+    state: directory
+    mode: 0755
+  when: offline_install is defined and offline_install == "yes"
+  tags:
+    - install
+    - update
+
+- name: set save images options
+  set_fact:
+    save_image_options: "--namespace={{ vora_kube_namespace }} \
+                         --docker-artifactory={{docker_artifactory}} \
+                         --artifactory-login-opt={{artifactory_login_opt}} \
+                         --artifactory-login-username={{artifactory_login_username}} \
+                         --artifactory-login-password={{artifactory_login_password}} \
+                         --accept-license \
+                         --non-interactive-mode \
+                         --save-images={{ images_save_path }}"
+  when: offline_install is defined and offline_install == "yes"
+  tags:
+    - install
+    - update
+
+- include: "{{role_path}}/../vora-kubernetes-install-cloud/tasks/common-install-parameters.yml"
+- name: Set Vora install command
+  set_fact:
+    installer_env:
+      KUBECONFIG: "{{kube_admin_config_path}}"
+      #VORA_FLAVOR: "{{ vora_flavor }}"
+    installer_path: "{{distributed_runtime_folder.files[0].path}}"
+    installer_base_cmd: "{{installer_common_cmd}} \
+                         --docker-registry={{ inventory_hostname }}:5000 \
+                         --increased-helm-timeout=1800 \
+                         --pod-wait-timeout=900 \
+                         {{checkpoint_option}} \
+                         --disable-installer-logging \
+                         --cert-domain={{ cert_domain }}"
+  tags:
+    - install
+    - update
+
+- name: debug installer_path
+  debug: var=installer_path
+
+- name: set permissions for installer
+  file:
+    dest: "{{installer_path}}"
+    mode: 0755
+    recurse: yes
+  tags:
+    - install
+    - update
+
+- name: Save vora images
+  shell: "./install.sh {{ save_image_options }} 2>&1 | tee {{installer_workspace}}/install_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  register: installation_result
+  when: offline_install is defined and offline_install == "yes"
+  tags:
+    - install
+    - update
+#- include_role:
+#    name: vora-update-certs
+#  tags:
+#    - update
+
+- name: Pass proxy to installer for monsoon
+  set_fact:
+    installer_base_cmd: "{{ installer_base_cmd }} \
+                         --cluster-http-proxy={{ http_proxy }} \
+                         --cluster-https-proxy={{ https_proxy }} \
+                         --cluster-no-proxy={{ ansible_env.no_proxy | default('') or ansible_env.NO_PROXY | default('') }}"
+  when: cluster_provider|default() == "monsoon"
+  tags:
+    - install
+    - update
+
+- name: set extra args
+  set_fact:
+    installer_base_cmd: "{{ installer_base_cmd }} --non-interactive-mode"
+  tags:
+    - install
+    - update
+
+- name: set update command
+  set_fact:
+    installer_base_cmd: "{{installer_base_cmd}} \
+                        --update"
+  tags:
+    - update
+
+- name: copy dev config gile to master node
+  copy: src={{ dev_config_file }} dest={{ dev_config_file_path }}
+  when: dev_config_file is defined
+  tags:
+    - install
+
+- name: judge dev config file is exits or not
+  shell: ls {{ dev_config_file_path }}
+  ignore_errors: True
+  register: result
+  when: dev_config_file_path is defined
+  tags:
+    - install
+
+- name: set dev config file
+  set_fact:
+    installer_base_cmd: "{{installer_base_cmd}} --dev-config-file={{ dev_config_file_path }}"
+  when: dev_config_file_path is defined and result.rc == 0
+  tags:
+    - install
+
+- name: debug install command
+  debug:
+    msg: "./install.sh {{ installer_base_cmd }}"
+  tags:
+    - install
+    - update
+
+- name: Install Vora
+  shell: "./install.sh {{ installer_base_cmd }} 2>&1 | tee {{installer_workspace}}/install_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  register: installation_result
+  tags:
+    - install
+    - update
+
+- fetch:
+    src: "{{installer_workspace}}/install_process.log"
+    dest: "{{ vora_installation_log }}"
+    flat: yes
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods logs directory
+    file: path="{{ installer_path }}/logs/podlogs" state=directory
+  - name: Collect current logs
+    shell: "{{role_path}}/files/log_collector.py {{ installer_path }}/logs/podlogs --namespace {{ vora_kube_namespace }}"
+    environment:
+        "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- block:
+  - name: copy generate_pods_describe_log.py to master
+    copy: src="{{role_path}}/files/generate_pods_describe_log.py" dest=/tmp/generate_pods_describe_log.py mode="0755"
+
+  - name: Create pods describe logs directory
+    file:
+      path: "{{ installer_path }}/logs/pod_des_logs"
+      state: directory
+  - name: save all pod describe log
+    shell: "python /tmp/generate_pods_describe_log.py {{ vora_kube_namespace }} {{ installer_path }}/logs/pod_des_logs"
+    environment:
+        "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the logs folder
+  archive:
+    path: "{{ installer_path }}/logs"
+    dest: "{{ installer_workspace }}/{{ archive_logs }}"
+    format: zip
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy logs to local
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_logs }}"
+    dest: "{{ archive_logs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the certs folder
+  archive:
+    path: "{{ installer_path }}/deployment/certs"
+    dest: "{{ installer_workspace }}/{{ certs }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy certs to local
+  fetch:
+    src: "{{ installer_workspace }}/{{ certs }}"
+    dest: "{{ certs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+
+- name: Assert that installation pass
+  assert: { that: "installation_result.rc == 0 and installation_result.changed == true" }
+  tags:
+    - install
+    - update
+
+# expose tx-coordinator
+- block:
+  - name: expose vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-tx-coordinator-ext --type NodePort --name=tx-coordinator-service-ext --labels='datahub.sap.com/app=vora'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_txc_result.stdout}}"
+    tags:
+      - install
+  when: expose_vora_txc is defined and expose_vora_txc == "yes"
+
+# expose text-analysis
+- block:
+  - name: expose text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-textanalysis --type NodePort --name=text-analysis-service-ext"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_text_analysis_result.stdout}}"
+    tags:
+      - install
+  when: expose_text_analysis is defined and expose_text_analysis == "yes"
+
+#expose vsystem  node port
+- name: expose vsystem node port
+  shell: "kubectl -n {{ vora_kube_namespace }} expose service vsystem --type NodePort --name=vsystem-ext"
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+  when: expose_vsystem == "yes"
+
+- name: get vsystem port
+  shell: "kubectl -n {{vora_kube_namespace}} get svc vsystem-ext -o jsonpath='{.spec.ports[0].nodePort}'"
+  environment:
+      "{{ installer_env }}"
+  register: vsystem_port
+  tags:
+    - install
+    - update
+
+- name: set vsystem entry
+  set_fact:
+    vsystem_entry: "https://{{inventory_hostname}}:{{vsystem_port.stdout}}"
+  tags:
+    - install
+    - update
+
+- name: generate summary file
+  template:
+    src: monsoon_summary.j2
+    dest: "{{installer_workspace}}/summary.log"
+  tags:
+    - install
+    - update
+
+- fetch:
+    src: "{{installer_workspace}}/summary.log"
+    dest: "summary.log"
+    flat: yes
+  tags:
+    - install
+    - update
+
+- name: download kubeconfig to local directory
+  fetch:
+    src: "{{kube_admin_config_path}}"
+    dest: "{{ playbook_dir }}/../k8s/KUBECONFIG"
+    flat: yes
+  tags:
+    - update

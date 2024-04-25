@@ -1,0 +1,9 @@
+FROM public.int.repositories.cloud.sap/python:3.8.10-slim
+
+RUN pip install --no-cache-dir requests==2.26.0
+RUN mkdir -p /project
+
+COPY entrypoint.sh reserve_cluster.py /project/
+RUN chmod +x /project/*
+
+ENTRYPOINT /project/entrypoint.sh

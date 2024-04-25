@@ -1,0 +1,100 @@
+---
+- name: Set default install flag
+  set_fact:
+    install_flag: "uninstall"
+  tags:
+    - uninstall
+
+- name: set installer env
+  set_fact:
+    installer_env:
+      KUBECONFIG: "{{ azure_kubeconfig }}"
+  tags:
+    - uninstall
+    
+- name: set common install parameters
+  include: common-install-parameters.yml
+  tags:
+    - uninstall
+
+- name: set variables for fast_deploy
+  set_fact:
+    acr_name: "{{ azure_registry_name }}"
+    acr_group: "{{ azure_resource_group }}"
+  when: aks_fast_deploy is undefined or not aks_fast_deploy or aks_fast_deploy != "yes"
+  tags:
+    - uninstall
+  
+- name: create cluster role binding
+  shell: "kubectl create clusterrolebinding default_is_admin --clusterrole=cluster-admin --serviceaccount={{ vora_kube_namespace }}:default"
+  environment:
+    "{{ installer_env }}"
+  ignore_errors: yes
+  tags:
+    - uninstall
+
+#- name: get aks cluster credentials
+#  shell: "az aks get-credentials --resource-group {{azure_resource_group}} --name {{aks_cluster_name}} \
+#          --file {{azure_kubeconfig}}"
+#  tags:    
+
+#- name: login az cli
+#  shell: "az login --service-principal --username {{ client_id }} --password {{ client_secret }} --tenant {{ tenant }}"
+#  tags:
+#    - uninstall
+
+#- name: set subscription id
+#  shell: "az account set --subscription {{ subscription_id }}"
+#  tags:
+#    - uninstall
+
+- name: set variables for registry
+  set_fact:
+    acr_name: "{{ azure_registry_name }}"
+    acr_group: "{{ azure_resource_group }}"
+  when: azure_vflow_registry_name is undefined or azure_vflow_resource_group is undefined
+  tags:
+    - uninstall
+
+# - name: set variables for vflow registry
+#   set_fact:
+#     acr_name: "{{ azure_vflow_registry_name }}"
+#     acr_group: "{{ azure_vflow_resource_group }}"
+#   when: azure_vflow_registry_name is defined and azure_vflow_resource_group is defined
+#   tags:
+#     - uninstall
+
+#- name: azure docker registry login
+#  shell: "az acr login -n {{ acr_name }}"
+#  ignore_errors: yes
+#  tags:
+#    - uninstall
+  
+#- name: get acr username
+#  shell: "az acr credential show -g {{acr_group}} -n {{acr_name}} --query 'username'"
+#  register: acr_username
+#  tags:
+#    - uninstall
+
+#- name: get acr password
+#  shell: "az acr credential show -g {{acr_group}} -n {{acr_name}} --query 'passwords[0].value'"
+#  register: acr_password
+#  tags:
+#    - uninstall
+    
+- name: Docker login before installation
+  shell: docker login -u {{ azure_docker_login_username }} -p {{ azure_docker_login_password }} https://{{ azure_docker_login_address }}
+  register: docker_login_result
+  until: docker_login_result.rc == 0
+  retries: 3
+  delay: 180
+  tags:
+    - uninstall
+
+- name: Starting vora uninstallation process via slcb
+  include: azure-aks-uninstall-vora-slcb.yml
+  when: uninstall_via_slcb == "true"
+  tags:
+    - uninstall
+
+

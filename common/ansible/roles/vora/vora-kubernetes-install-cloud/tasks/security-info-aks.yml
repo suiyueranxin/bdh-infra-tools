@@ -1,0 +1,8 @@
+---
+security_json_file: "{{ role_path }}/SECURITY_JSON_FILE.json"
+aks_security_info: "{{ lookup('file',security_json_file) | from_json }}"
+client_id: "{{ aks_security_info.AZURE_CLIENT_ID }}"
+client_secret: "{{ aks_security_info.AZURE_CLIENT_SECRET }}"
+subscription_id: "{{ aks_security_info.AZURE_SUBSCRIPTION_ID }}"
+tenant: "{{ aks_security_info.AZURE_TENANT }}"
+

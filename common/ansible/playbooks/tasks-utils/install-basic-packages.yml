@@ -1,0 +1,42 @@
+---
+- name: Define basic_packages to install
+  set_fact:
+    basic_packages:
+      - curl
+      - tar
+      - unzip
+      - wget
+      - openssl
+
+- name: Install the basic packages
+  package: name={{ item }} state=present
+  with_items: "{{basic_packages}}"
+
+- name: Install the yum-utils packages for RedHat
+  package: name=yum-utils state=present
+  when: ansible_os_family == "RedHat"
+
+- name: install EPEL on RHEL on AWS EC2
+  package: name=epel-release state=present
+  when: ansible_distribution == "CentOS"
+
+- name: install EPEL on RHEL on AWS EC2
+  shell: yum-config-manager –enable rhui-REGION-rhel-server-optional
+  when: ansible_os_family == "RedHat"
+  ignore_errors: true
+
+- block:
+
+    - name: Install the basic packages with zypper if Suse when ansible ver >= 2.2
+      zypper: name={{ item }} state=present update_cache=yes
+      with_items: "{{basic_packages}}"
+
+    - name: make sure sshd service is running for suse
+      service: name=sshd state=started enabled=yes
+
+  when: ansible_os_family == "Suse" and ansible_version.major == 2 and ansible_version.minor > 1
+
+- name: Install the basic packages with zypper if Suse when ansible ver < 2.2
+  zypper: name={{ item }} state=present
+  with_items: "{{basic_packages}}"
+  when: ansible_os_family == "Suse" and ansible_version.major == 2 and ansible_version.minor < 2

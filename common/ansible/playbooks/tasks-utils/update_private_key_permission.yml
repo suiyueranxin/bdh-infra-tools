@@ -1,0 +1,5 @@
+---
+- hosts: workstation
+  tasks:
+    - name: Make sure id_rsa has permission 600
+      file: path={{playbook_dir}}/../../id_rsa state=file mode=600

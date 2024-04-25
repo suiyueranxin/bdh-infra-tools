@@ -1,0 +1,16 @@
+---
+- hosts: nodes
+  tasks: []
+
+- name: Destroy Monsoon cluster
+  hosts: workstation
+  tasks:
+    - name: Terminate instances of Monsoon cluster
+      ec2:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        ec2_url: "{{ ec2_endpoint_url }}"
+        validate_certs: no
+        state: "absent"
+        instance_ids: "{{ hostvars[item].inventory_hostname_short }}"
+      with_items: "{{ groups['nodes'] }}"

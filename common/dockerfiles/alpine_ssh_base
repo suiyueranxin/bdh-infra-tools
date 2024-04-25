@@ -1,0 +1,6 @@
+FROM alpine:latest  
+
+COPY hera/env/ssh/config hera/env/ssh/velobot/id_rsa hera/env/ssh/velobot/id_rsa.pub hera/env/ssh/velobot/known_hosts /root/.ssh/
+COPY hera/env/ssh/infrabox/id_rsa /root/.ssh/id_rsa-gerrit
+COPY hera/env/ssh/infrabox/id_rsa.pub /root/.ssh/id_rsa.pub-gerrit
+RUN chmod 600 /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa-gerrit && chmod 600 /root/.ssh/config

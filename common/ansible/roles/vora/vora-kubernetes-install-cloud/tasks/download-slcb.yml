@@ -1,0 +1,40 @@
+- name: download slcb
+  get_url:
+    url: "{{ slcb_download_url }}"
+    dest: "{{ installer_workspace }}/slcb"
+    mode: '0744'
+    timeout: 300
+    validate_certs: no
+  when: use_customized_slcb_binary is undefined or use_customized_slcb_binary != "true"
+  tags:
+  - install
+  - update
+
+- name: download unzip
+  shell: "apt-get update -y; apt-get install -y unzip"
+  environment:
+    "{{ installer_env }}"
+  when: (use_customized_slcb_binary is undefined or use_customized_slcb_binary != "true") and slcb_package_suffix == "zip"
+  tags:
+    - install
+    - update
+
+- name: unzip slcb
+  unarchive:
+    src: "{{ installer_workspace }}/slcb"
+    dest: "{{ installer_workspace }}"
+  environment:
+    "{{ installer_env }}"
+  when: (use_customized_slcb_binary is undefined or use_customized_slcb_binary != "true") and slcb_package_suffix == "zip"
+  tags:
+    - install
+    - update
+
+- name: copy slcb
+  shell: "cp /slcb_binary/slcb* {{ installer_workspace }}/slcb; chmod 744 {{ installer_workspace }}/slcb"
+  args:
+    executable: /bin/bash
+  when: use_customized_slcb_binary is defined and use_customized_slcb_binary == "true"
+  tags:
+    - install
+    - update 

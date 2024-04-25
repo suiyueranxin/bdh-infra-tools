@@ -1,0 +1,8 @@
+---
+- name: scp get k8s admin config
+  shell: "scp -i {{ role_path }}/../../../id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null azure@{{ master_name }}:/home/azure/.kube/config {{ playbook_dir }}/KUBECONFIG"
+  register: scp_result
+  until: scp_result.rc == 0
+  retries: 40 # Wait for 10 minutes max
+  delay: 15
+

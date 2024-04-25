@@ -1,0 +1,332 @@
+- block:
+  - name: deploy the ngnix controller
+    shell: "kubectl create -f {{ role_path }}/files/gke_nginx.yaml"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: wait ngnix controller is ready
+    shell: "kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+    register: controller_pub_ip
+    until: controller_pub_ip.stdout != ''
+    retries: 80 #Wait for 20 minutes max
+    delay: 15
+    ignore_errors: yes
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+  when: enable_client_cert is defined and enable_client_cert == "true"
+# expose tx-coordinator
+- block:
+  - name: expose vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-tx-coordinator-ext --type NodePort --name=tx-coordinator-service-ext --labels='datahub.sap.com/app=vora'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_txc_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service tx-coordinator-service-ext cloud.google.com/load-balancer-type=Internal"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_txc_result.stdout}}"
+    tags:
+      - install
+  when: expose_vora_txc == "yes"
+
+# expose text-analysis
+- block:
+  - name: expose text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-textanalysis --type LoadBalancer --name=text-analysis-service-ext"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_text_analysis_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service text-analysis-service-ext  cloud.google.com/load-balancer-type=Internal"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_text_analysis_result.stdout}}"
+    tags:
+      - install
+  when: expose_text_analysis == "yes"
+
+#expose vsystem ingress
+- block:
+  - name: expose vsystem node port
+    shell: "kubectl -n {{ vora_kube_namespace }} expose service vsystem --type NodePort --name=vsystem-ext"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: patch vsystem-ext service
+    shell: "kubectl -n {{ vora_kube_namespace }} patch service vsystem-ext -p '{\"spec\": {\"ports\" : [{\"name\": \"vsystem-ext\", \"port\" : 8797}]}}'"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: patch vsystem-ext service
+    shell: "kubectl -n {{ vora_kube_namespace }} annotate service vsystem-ext service.alpha.kubernetes.io/app-protocols='{\"vsystem-ext\":\"HTTPS\"}'"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: set fact for gcloud domain name
+    set_fact:
+      gke_domain_name: "{{ gcloud_k8s_cluster_name | replace('_', '-') }}"
+    when: gcloud_k8s_cluster_name is defined and gcloud_k8s_cluster_name != ""
+    tags:
+      - install
+      - update
+
+  - name: set fact for gcloud vsystem domain name
+    set_fact:
+      gcloud_vsystem_domain_name: "{{gke_domain_name}}-gke.{{dns_suffix}}"
+    tags:
+      - install
+      - update
+  
+  - name: copy vsystem ssl crt.pem from repo
+    stat:
+      path: "{{ role_path }}/files/tmp/crt.pem"
+    tags:
+      - install
+    register: stat_crt_result
+  
+  - name: copy vsystem ssl key.pem from repo
+    stat:
+      path: "{{ role_path }}/files/tmp/key.pem"
+    tags:
+      - install
+    register: stat_key_result
+  
+  - name: if ssl key.pem exist already
+    copy:
+      src: "{{ role_path }}/files/tmp/key.pem"
+      dest: "{{ installer_workspace }}/key.pem"
+    tags:
+      - install
+    when: stat_key_result.stat.exists == True
+
+  - name: copy key.pem into installer_workspace
+    copy:
+      src: key.pem
+      dest: "{{ installer_workspace }}/key.pem"
+    tags:
+      - install
+    when: stat_key_result.stat.exists == False
+
+  - name: if ssl crt.pem exist already
+    copy:
+      src: "{{ role_path }}/files/tmp/crt.pem"
+      dest: "{{ installer_workspace }}/crt.pem"
+    tags:
+      - install
+    when: stat_crt_result.stat.exists == True
+
+  - name: copy crt.pem into installer_workspace
+    copy:
+      src: crt.pem
+      dest: "{{ installer_workspace }}/crt.pem"
+    tags:
+      - install
+    when: stat_crt_result.stat.exists == False
+
+  - name: generate the vsystem ingress frontend config for ssl policy
+    template:
+      src: gke-ingress-frontend-cfg.yaml.j2
+      dest: "{{ installer_workspace }}/gke-ingress-frontend-cfg.yaml"
+    ignore_errors: yes
+    when: enable_client_cert is defined and enable_client_cert == "false"
+    tags:
+      - install
+
+  - name: create vsystem ingress frontend config
+    shell: "kubectl create -f {{ installer_workspace }}/gke-ingress-frontend-cfg.yaml -n {{vora_kube_namespace}}"
+    ignore_errors: yes
+    when: enable_client_cert is defined and enable_client_cert == "false"
+    tags:
+      - install
+
+  - name: create vsystem service backend config
+    shell: "kubectl apply -f {{ role_path }}/files/gke_vsystem_backend_config.yaml -n {{vora_kube_namespace}}"
+    when: enable_client_cert is defined and enable_client_cert == "false"
+    ignore_errors: yes
+    tags:
+      - install
+      - rescue
+  - name: patch vsystem with created backend config
+    shell: "kubectl annotate service vsystem beta.cloud.google.com/backend-config='{\"ports\": {\"8797\":\"vsystem-backendconfig\"}}' -n {{vora_kube_namespace}}"
+    ignore_errors: yes
+    when: enable_client_cert is defined and enable_client_cert == "false"
+    tags:
+      - install
+      - rescue
+
+  - name: deploy vystem ingress secret
+    shell: "kubectl -n {{ vora_kube_namespace }} create secret tls vsystem-tls-certs --key {{ installer_workspace }}/key.pem --cert {{ installer_workspace }}/crt.pem"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: generate the gke_ingress.yaml to install workspace dir
+    template:
+      src: gke_ingress.yaml.j2
+      dest: "{{ installer_workspace }}/gke_ingress.yaml"
+    tags:
+      - install
+
+  - name: display vsystem ingress
+    shell: "cat {{ installer_workspace }}/gke_ingress.yaml"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    tags:
+      - install
+      - rescue
+
+  - name: deploy the vsystem ingress
+    shell: "kubectl create -n {{ vora_kube_namespace }} -f {{ installer_workspace }}/gke_ingress.yaml"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: wait vsystem service is ready
+    shell: "kubectl get ingress vsystem --namespace={{ vora_kube_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+    register: pub_ip
+    until: pub_ip.stdout != ''
+    retries: 30 #Wait for 9 minutes max
+    delay: 15
+    ignore_errors: yes
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+      - update
+
+  - name: set ingress backend-services timeout
+    shell: "kubectl describe ingress -n {{ vora_kube_namespace }} | grep k8s-be- | awk '{print $2}'| jq -r 'keys[]' | { while read i; do gcloud compute backend-services update $i --timeout={{ gke_ingress_timeout }} --global; done }"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    when: gke_change_ingress_timeout == "yes"
+    tags:
+      - install
+
+  when: expose_vsystem == "yes"
+
+#add dns record at aws route53
+- block:
+  - name: set fact for dns
+    set_fact:
+      dns_record: "{{ gcloud_vsystem_domain_name }}"
+      dns_value: "{{pub_ip.stdout}}"
+    tags:
+      - install
+      - update
+
+  - name: create dns record
+    import_role:
+      name: route53-create
+    tags:
+      - install
+
+  - name: set vsystem entrypoint
+    set_fact:
+      vsystem_entry: "https://{{dns_record}}:443"
+    tags:
+      - install
+      - update
+
+  - name: save public ip to install log
+    shell: "echo 'Please access vsystem by {{vsystem_entry}}' >> {{ playbook_dir }}/vora_installation.log"
+    tags:
+      - install
+      - update
+
+  - name: show vsystem entry
+    debug:
+      msg: "vsystem entrypoint: {{vsystem_entry}}"
+    tags:
+      - install
+      - update
+
+  - name: show vsystem load balance ip
+    debug:
+      msg: "vsystem load balance ip: {{dns_value}}"
+    tags:
+      - install
+      - update
+  when: gke_expose_ingress_at_route53 == "yes" and expose_vsystem == "yes"
+
+- block:
+  - name: get vsystem node ip
+    shell: "kubectl get node -o wide -o jsonpath='{.items[0].status.addresses[1].address}'"
+    register: pub_ip
+    until: pub_ip.stdout != ''
+    retries: 30 #Wait for 9 minutes max
+    delay: 15
+    ignore_errors: yes
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+      - update
+
+  - name: get vsystem node port
+    shell: "kubectl get svc vsystem --namespace={{ vora_kube_namespace }} -o jsonpath='{.spec.ports[0].nodePort}'"
+    register: node_port
+    until: node_port.stdout != ''
+    retries: 30 #Wait for 9 minutes max
+    delay: 15
+    ignore_errors: yes
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+      - update
+
+  - name: set vsystem entrypoint
+    set_fact:
+      vsystem_entry: "https://{{pub_ip.stdout}}:{{node_port.stdout}}"
+    tags:
+      - install
+      - update
+
+  when: gke_expose_ingress_at_route53 == "no"

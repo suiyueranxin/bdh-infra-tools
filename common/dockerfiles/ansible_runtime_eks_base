@@ -1,0 +1,28 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ansible-runtime-base:ansible4.0.0
+
+ARG KUBECTL_CLI_VERSION=1.20.9
+ARG CALICO_CLI_VERSION=3.8.1
+
+ENV PATH=$PATH:$HONE/.local/bin/
+
+# Install kubectl
+RUN curl -Lo /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v$KUBECTL_CLI_VERSION/bin/linux/amd64/kubectl
+RUN chmod +x /usr/local/bin/kubectl
+
+# Install aws-cli
+RUN pip install awscli==1.16.202 --upgrade --user && \
+    apt-get update && apt-get install -y groff
+
+RUN ln -s /root/.local/bin/aws /usr/bin/aws
+
+# Install Heptio-Authenticator
+RUN curl -o heptio-authenticator-aws https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-06-05/bin/linux/amd64/heptio-authenticator-aws && chmod +x ./heptio-authenticator-aws
+RUN mv ./heptio-authenticator-aws /usr/local/sbin/ && chmod +x /usr/local/sbin/heptio-authenticator-aws 
+
+# Install calicoctl
+RUN curl -Lo /usr/local/bin/calicoctl https://github.com/projectcalico/calicoctl/releases/download/v$CALICO_CLI_VERSION/calicoctl
+RUN chmod +x /usr/local/bin/calicoctl
+
+# Add az cli
+RUN apt-get install -y azure-cli=2.18.0-2
+

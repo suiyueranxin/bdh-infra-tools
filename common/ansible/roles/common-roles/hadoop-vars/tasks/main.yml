@@ -1,0 +1,53 @@
+---
+- name: Load OS specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_os_family | lower }}.yml"
+        - defaults.yml
+      paths:
+        - "{{ inventory_dir }}/vars"
+      skip: true
+
+- name: Set SPARK_HOME env variable for external spark
+  set_fact:
+    spark_home: "{{ external_spark_install_dir }}"
+  when: use_external_spark
+
+- name: Set SPARK_HOME env variable for built-in spark
+  set_fact:
+    spark_home: "{{ ambari_spark_home if cluster_manager == 'ambari' else cloudera_spark_home }}"
+  when: not use_external_spark and cluster_manager != 'mapr'
+
+- name: Set common variables
+  set_fact:
+    java_home: "{{ java_home }}"
+    hadoop_conf_dir: "/etc/hadoop/conf"
+    yarn_conf_dir: "/etc/hadoop/conf"
+    spark_lib_dir: "{{spark_home}}/lib/"
+    spark_bin_dir: "{{spark_home}}/bin/"
+    spark_conf_dir: "{{spark_home}}/conf/"
+
+- block:
+  - name: Get HDP version for Ambari
+    shell: hdp-select status hadoop-client | sed 's/hadoop-client - \(.*\)/\1/'
+    register: hdp_ver_resp
+
+  - name: Set HDP version for Ambari
+    set_fact:
+      hdp_version: "{{hdp_ver_resp.stdout}}"
+
+  - name: Set variables for Ambari
+    set_fact:
+      hadoop_home: /usr/hdp/{{hdp_version}}/hadoop
+      ld_library_path: "/usr/hdp/{{hdp_version}}/hadoop/lib/native"
+      vora_spark_home: /opt/vora-spark
+  when: cluster_manager == 'ambari'
+
+- name: Set variables for Cloudera
+  set_fact:
+    hadoop_home: "/opt/cloudera/parcels/CDH/lib/hadoop"
+    ld_library_path: "/opt/cloudera/parcels/CDH/lib/hadoop/lib/native"
+    vora_spark_home: /opt/cloudera/parcels/SAPHanaVora/lib/vora-spark
+  when: cluster_manager == 'cloudera'
+

@@ -1,0 +1,11 @@
+[ v3_req ]
+
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[ alt_names ]
+
+DNS.1 = ondemand.com
+DNS.2 = *.ondemand.com
+DNS.3 = vsystem.ingress.{{gardener_shoot_name}}.{{gardener_project_name}}.{{gardener_dns_zone}}

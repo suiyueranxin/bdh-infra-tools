@@ -1,0 +1,6 @@
+{
+   "ec2":{
+      "eu-central-1":"ec2.eu-central-1.amazonaws.com",
+      "eu-west-1":"ec2.eu-west-1.amazonaws.com"
+   }
+}

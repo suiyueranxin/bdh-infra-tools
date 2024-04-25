@@ -1,0 +1,579 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "name": "build",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build/Dockerfile",
+            "timeout": 10800,
+            "build_only": false,
+            "environment": {
+                "FTPUSER": "infrabox_user",
+                "GIT_CLONE_DEPTH": "100",
+                "FTPHOST": "10.47.221.67",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "USE_CUSTOMIZED_SLCB_BINARY": "true",
+                "FTPENABLE": "FALSE",
+                "INSTALL_VIA_SLCB": "true",
+                "FTPPASS": "Sapvora123",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2",
+                "USE_FOR": "WEB",
+                "SLCB_VERSION": "1.1.38"
+            },
+            "build_context": "/data/repo",
+            "security_context": {
+                "privileged": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 3072
+                }
+            }
+        },
+        {
+            "name": "build_copy_files",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_copy_files/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "build"
+                }
+            ],
+            "build_only": false,
+            "environment": {
+                "GERRIT_CHANGE_BRANCH": "rel-3.2"
+            },
+            "build_context": "/data/repo",
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "k8s_creation_di_on_prem-gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                }, 
+                "MAX_ERROR_RETRY_NUM": "5",
+                "PROVISION_PLATFORM": "GKE",
+                "MAX_READY_WAIT": "3600",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_REFUSE_WAIT": "7200",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "MAX_CREATE_RETRY_NUM": "3",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2",
+                "USE_FOR": "MILESTONE_VALIDATION"
+            },
+            "build_context": "/data/repo",
+            "timeout": 12600,
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "install_di_on_prem-gke",
+            "docker_file": "common/dockerfiles/ansible_runtime_gcloud",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_di_on_prem-gke"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "build"
+                }
+            ],
+            "timeout": 10800,
+            "build_only": false,
+            "environment": {
+                "INSTALL_VIA_SLCB": "true",
+                "FTPHOST": "10.47.221.67",
+                "FTPPASS": "Sapvora123",
+                "FTPUSER": "infrabox_user",
+                "FTPENABLE": "FALSE",
+                "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+                "GCP_PROJECT_ID": "sap-p-and-i-big-data-vora",
+                "VSYSTEM_VERSION": "1.4.3",
+                "K8S_CREATION_JOB": "k8s_creation_di_on_prem-gke",
+                "PROVISION_PLATFORM": "GKE",
+                "GKE_INGRESS_TIMEOUT": "90",
+                "ENABLE_AUTHENTICATION": "no",
+                "SKIP_VSYSTEM_ASSEMBLY": "yes",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "USE_SKOPEO": "yes",
+                "GKE_CHANGE_INGRESS_TIMEOUT": "yes",
+                "GCP_APPLICATION_CREDENTIALS": "/google_credentials.txt",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "USE_FOR": "MILESTONE_VALIDATION",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2",
+                "EXPOSE_VORA_TXC": "yes",
+                "EXPOSE_TEXT_ANALYSIS": "yes",                
+                "GIT_CLONE_DEPTH": "100",
+                "USE_CUSTOMIZED_SLCB_BINARY": "true",
+                "MAX_ERROR_RETRY_NUM": "5",
+                "SERVER_URL": "https://im-api.datahub.only.sap"
+            },
+            "build_context": "/data/repo",
+            "security_context": {
+                "privileged": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "k8s_deletion_di_on_prem-gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "install_di_on_prem-gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_creation_di_on_prem-gke"
+                }
+            ],
+            "build_only": false,
+            "environment": {
+                "K8S_CREATION_JOB": "k8s_creation_di_on_prem-gke",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "build_context": "/data/repo",
+            "timeout": 12600,
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "job_report_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_creation_di_on_prem-gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_di_on_prem-gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "install_di_on_prem-gke"
+                }
+            ],
+            "build_only": false,
+            "environment": {
+                "DEFAULT_RECEIVERS": "stella.sun@sap.com",
+                "FULL_PLATFORM": "dhaas_aws,gke",
+                "RESTAPI_PORT": "30711",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "PARENT_INSTALL_JOB": "install_di_on_prem-gke",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2",
+                "USE_FOR": "WEB",
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap"
+            },
+            "build_context": "/data/repo",
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "k8s_creation_di_on_prem-eks",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            },
+            "build_only": false,
+            "build_context": "/data/repo",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "MAX_READY_WAIT": "3600",
+                "MAX_REFUSE_WAIT": "7200",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_CREATE_RETRY_NUM": "3",
+                "USE_FOR": "WEB"
+            },
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "name": "install_di_on_prem-eks",
+            "type": "docker",
+            "timeout": 14400,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "build_context": "/data/repo",
+            "docker_file": "common/dockerfiles/ansible_runtime_eks",
+            "environment": {
+                "INSTALL_VIA_SLCB": "true",
+                "SLCB_VERSION": "1.1.40",
+                "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+                "USE_CUSTOMIZED_SLCB_BINARY": "true",
+                "USE_SKOPEO": "yes",
+                "FTPHOST": "10.47.221.67",
+                "FTPPASS": "Sapvora123",
+                "FTPUSER": "infrabox_user",
+                "FTPENABLE": "FALSE",
+                "EXPOSE_PORT": "yes",
+                "K8S_CREATION_JOB": "k8s_creation_di_on_prem-eks",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "ENABLE_AUTHENTICATION": "no",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "USE_FOR": "WEB",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2"
+            },
+            "build_arguments": {
+                "SCRIPT_WORKSPACE": "fulcrum",
+                "ANSIBLE_WORKSPACE": "common"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_di_on_prem-eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "build"
+                }
+            ],
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "name": "k8s_deletion_di_on_prem-eks",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "/data/repo",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_di_on_prem-eks",
+                "USE_FOR": "WEB",
+                "PROVISION_PLATFORM": "AWS-EKS"
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_di_on_prem-eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "install_di_on_prem-eks",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "name": "job_report_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_creation_di_on_prem-eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_di_on_prem-eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "install_di_on_prem-eks"
+                }
+            ],
+            "build_only": false,
+            "environment": {
+                "DEFAULT_RECEIVERS": "stella.sun@sap.com",
+                "FULL_PLATFORM": "dhaas_aws,eks",
+                "RESTAPI_PORT": "30711",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "PARENT_INSTALL_JOB": "install_di_on_prem-eks",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2",
+                "USE_FOR": "WEB",
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap"
+            },
+            "build_context": "/data/repo",
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+		{
+            "name": "k8s_creation_di_on_prem-aks",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            },
+            "build_only": false,
+            "build_context": "/data/repo",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "MAX_READY_WAIT": "3600",
+                "MAX_REFUSE_WAIT": "7200",
+                "PROVISION_PLATFORM": "AZURE-AKS",
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_CREATE_RETRY_NUM": "3",
+                "AKS_SUBSCRIPTION_NAME": "sap-pi-big-data-validation",
+                "USE_FOR": "WEB"
+            },
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "name": "install_di_on_prem-aks",
+            "type": "docker",
+            "timeout": 14400,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "build_context": "/data/repo",
+            "docker_file": "common/dockerfiles/ansible_runtime_aks",
+            "environment": {
+                "INSTALL_VIA_SLCB": "true",
+                "SLCB_VERSION": "1.1.40",
+                "FTPHOST": "10.47.221.67",
+                "USE_CUSTOMIZED_SLCB_BINARY": "true",
+                "FTPPASS": "Sapvora123",
+                "FTPUSER": "infrabox_user",
+                "FTPENABLE": "FALSE",
+                "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+                "EXPOSE_PORT": "yes",
+                "AZURE_TENANT": "42f7676c-f455-423c-82f6-dc2d99791af7",
+                "AZURE_CLIENT_ID": "8c0c951d-de30-4e69-a66e-406fc50dbaa1",
+                "K8S_CREATION_JOB": "k8s_creation_di_on_prem-aks",
+                "PROVISION_PLATFORM": "AZURE-AKS",
+                "AZURE_CLIENT_SECRET": "XO/34ztNfNPRY1xrOiUIwHgoxSiDjocNUGrNOFFMXyw=",
+                "AZURE_SUBSCRIPTION_ID": "2c3d8ee1-57ad-49c0-8c04-27180f615c93",
+                "ENABLE_AUTHENTICATION": "no",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "USE_FOR": "WEB",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_di_on_prem-aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "build"
+                }
+            ],
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "name": "k8s_deletion_di_on_prem-aks",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "/data/repo",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_di_on_prem-aks",
+                "USE_FOR": "WEB",
+                "PROVISION_PLATFORM": "AZURE-AKS"
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_di_on_prem-aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_di_on_prem-aks",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "name": "job_report_aks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_creation_di_on_prem-aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_di_on_prem-aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "install_di_on_prem-aks"
+                }
+            ],
+            "build_only": false,
+            "environment": {
+                "DEFAULT_RECEIVERS": "stella.sun@sap.com",
+                "FULL_PLATFORM": "dhaas_aws,aks",
+                "RESTAPI_PORT": "30711",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "PARENT_INSTALL_JOB": "install_di_on_prem-aks",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "GERRIT_CHANGE_BRANCH": "rel-3.2",
+                "USE_FOR": "WEB",
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap"
+            },
+            "build_context": "/data/repo",
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        }
+    ]
+  }
+  

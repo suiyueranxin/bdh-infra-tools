@@ -1,0 +1,25 @@
+#TODO rewrite this to check whether service is installed and then stop it
+
+- name: "Disable firewall services on SLES"
+  service: name={{item}} state=stopped enabled=no
+  register: command_result
+  failed_when: "command_result|failed and 'cannot find' not in command_result.msg and 'Could not find' not in command_result.msg and 'no service' not in command_result.msg"
+  with_items:
+        - SuSEfirewall2
+  when: ansible_os_family == 'Suse'
+
+- name: "Disable firewall services on RHEL"
+  service: name={{item}} state=stopped enabled=no
+  register: command_result
+  failed_when: "command_result|failed and 'cannot find' not in command_result.msg and 'could not find' not in command_result.msg and 'no service' not in command_result.msg"
+  with_items:
+        - firewalld
+  when: ansible_os_family == 'RedHat'
+
+- name: "Disable firewall services on Ubuntu"
+  service: name={{item}} state=stopped enabled=no
+  register: command_result
+  failed_when: "command_result|failed and 'cannot find' not in command_result.msg and 'could not find' not in command_result.msg and 'no service' not in command_result.msg"
+  with_items:
+        - iptables
+  when: ansible_os_family == 'Ubuntu'

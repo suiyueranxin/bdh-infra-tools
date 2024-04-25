@@ -1,0 +1,18 @@
+# Proxy Settings
+proxy_host: proxy.wdf.sap.corp
+proxy_port: 8080
+http_proxy: http://{{ proxy_host }}:{{ proxy_port }}
+https_proxy: "{{ http_proxy }}"
+no_proxy: localhost,*.sap.corp,sap.corp,*.wdf.sap.corp,git.wdf.sap.corp,master.ansible,jumpbox.ansible,worker1.ansible,worker2.ansible
+
+java_version: 8
+java_subversion: 151
+java_download_from_oracle: false
+
+network_name: ansible-docker-ambari
+# set this to a value (in GB) other than 0 to get a volume attached on the monsoon instance.
+monsoon_volume_size: 0
+workstation_temp_dir: /tmp
+monsoon_rook_vol: ansible_rook
+monsoon_rook_size: 40%FREE
+monsoon_rook_volume_mnt_point: /rook

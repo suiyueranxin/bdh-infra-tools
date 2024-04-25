@@ -1,0 +1,70 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "type": "docker",
+            "name": "build-installer",
+            "docker_file": "images/com.sap.datahub.linuxx86_64/installer/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": true,
+            "deployments": [
+                {
+                    "type": "docker-registry",
+                    "host": "di-dev-cicd-v2.int.repositories.cloud.sap",
+                    "repository": "infrabox/hanalite-releasepack/com.sap.datahub.linuxx86_64/installer"
+                },
+                {
+                    "type": "docker-registry",
+                    "host": "di-dev-cicd-v2.int.repositories.cloud.sap",
+                    "target": "new_installer",
+                    "repository": "infrabox/hanalite-releasepack/com.sap.datahub.linuxx86_64/di-releasepack-installer"
+                },
+                {
+                    "type": "docker-registry",
+                    "host": "di-dev-cicd-v2.int.repositories.cloud.sap",
+                    "target": "forwarding_bridge_stage",
+                    "repository": "infrabox/hanalite-releasepack/com.sap.datahub.linuxx86_64/di-forwarding-bridge"
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "build-full-product-bridge",
+            "docker_file": "images/com.sap.datahub.linuxx86_64/installer/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_arguments": {
+                "BRIDGE_NAME": "di-platform-full-product-bridge"
+            },
+            "build_only": true,
+            "deployments": [
+                {
+                    "type": "docker-registry",
+                    "host": "di-dev-cicd-v2.int.repositories.cloud.sap",
+                    "target": "product_bridge",
+                    "repository": "infrabox/hanalite-releasepack/com.sap.datahub.linuxx86_64/di-platform-full-product-bridge"
+                }
+            ]
+        },
+        {
+            "clone_url": "https://github.wdf.sap.corp/bdh/bdh-infra-tools.git",
+            "infrabox_file": "hera/infrabox_hanalite-releasepack_nightly_debug_gke_generator.json",
+            "type": "git",
+            "name": "bdh-infra-tools",
+            "depends_on": [
+                "build-installer",
+                "build-full-product-bridge"
+            ],
+            "commit": "master"
+        }
+    ]
+}

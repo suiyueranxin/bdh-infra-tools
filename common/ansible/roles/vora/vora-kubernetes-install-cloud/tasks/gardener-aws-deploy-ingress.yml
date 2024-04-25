@@ -1,0 +1,105 @@
+---
+- block:
+  - name: generate openssl.conf
+    template:
+      src: gardener-openssl.conf.j2
+      dest: /tmp/gardener-openssl.conf
+    tags:
+      - install
+
+  - name: generate tls
+    shell: "openssl req -new -subj \"/CN={{gardener_dns_base}}\" -key {{role_path}}/files/gardener.key.pem -out /tmp/gardener.csr;openssl x509 -req -extensions v3_req -days 3650 -in /tmp/gardener.csr -signkey {{role_path}}/files/gardener.key.pem -out /tmp/gardener.crt -extfile /tmp/gardener-openssl.conf"
+    tags:
+      - install
+
+  - name: generate the ingress.yaml to tmp dir
+    template:
+      src: gardener_aws_ingress.yaml.j2
+      dest: "{{ installer_workspace }}/ingress_{{ gardener_shoot_name }}.yaml"
+    tags:
+      - install
+
+  - name: deploy the ingress
+    shell: "kubectl create -n {{ vora_kube_namespace }} -f {{ installer_workspace }}/ingress_{{ gardener_shoot_name }}.yaml"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    tags:
+      - install
+
+  - name: setup tls
+    shell: "kubectl -n {{vora_kube_namespace}} create secret tls vsystem-tls-certs --key {{role_path}}/files/gardener.key.pem --cert /tmp/gardener.crt"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - debug:
+      msg: "The vsystem url is: https://vsystem.ingress.{{gardener_shoot_name}}.{{gardener_project_name}}.{{gardener_dns_zone}}"
+    tags:
+      - install
+  when: expose_vsystem == "yes"
+
+# expose tx-coordinator
+- block:
+  - name: expose vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-tx-coordinator-ext --type LoadBalancer --name=tx-coordinator-service-ext --labels='datahub.sap.com/app=vora'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_txc_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service tx-coordinator-service-ext service.beta.kubernetes.io/aws-load-balancer-internal='0.0.0.0/0' || true && \
+            kubectl -n {{vora_kube_namespace}} annotate service tx-coordinator-service-ext service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout='3600'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_txc_result.stdout}}"
+    tags:
+      - install
+  when: expose_vora_txc == "yes"
+
+# expose text-analysis
+- block:
+  - name: expose text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-textanalysis --type LoadBalancer --name=text-analysis-service-ext"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_text_analysis_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service text-analysis-service-ext service.beta.kubernetes.io/aws-load-balancer-internal='0.0.0.0/0' || true && \
+            kubectl -n {{vora_kube_namespace}} annotate service text-analysis-service-ext service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout='3600'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_text_analysis_result.stdout}}"
+    tags:
+      - install
+  when: expose_text_analysis == "yes"

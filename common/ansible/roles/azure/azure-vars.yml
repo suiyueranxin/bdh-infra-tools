@@ -1,0 +1,42 @@
+---
+security_json_file: "{{ role_path }}/AKS_SECURITY_JSON_FILE.json"
+aks_security_info: "{{ lookup('file',security_json_file) | from_json }}"
+client_id: "{{ aks_security_info.AZURE_CLIENT_ID }}"
+client_secret: "{{ aks_security_info.AZURE_CLIENT_SECRET }}"
+subscription_id: "{{ aks_security_info.AZURE_SUBSCRIPTION_ID }}"
+tenant: "{{ aks_security_info.AZURE_TENANT }}"
+
+resource_group_name: "{{ azure_k8s_cluster_name }}"
+resource_time: "{{ ansible_date_time.iso8601_basic_short | lower }}"
+resource_prefix: "{{ resource_group_name.split('-')[0] }}"
+registry_name: "registry{{ resource_time }}"
+container_service_name: "{{ resource_prefix }}_container_service"
+azure_region: westeurope
+sku: Basic
+admin_user_enabled: True
+cluster_name: Kubernetes
+master_dns_prefix: "{{ azure_k8s_cluster_name }}-master"
+master_instance_type: Standard_D3_v2
+master_count: 1
+sshpublickey: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCp3ELA/Npw5peXHomRIaoCfwTNA3OEqfyG0xU9nqIcUqo6iUUBNvsIkgeoWJno0sJrz+PsnOsr3kljsYrG7naKUC/cq8CH5jdKyqmTgHf9WCbsH6e41u0/Uo8zFiOWL7PTZzO/DltUv/Oh/0Yg1yUegoC4M3n8WFRdvF3g0MBHzigoz0UKwp8kTct9oJW0ro8rWXOSwB0CB45wkzvsJOEwUff604xA9VR9oTEKaPwW4zOtQSJqMtphICl0k88UpOOof/Tjtw0n2HQFve6ezSGc+VzF0Z2AWbpqzrmXceTyFWf7swJ8udFSgZsVp4LQ8K5TvZrPfgrDoX1xy1QRBBks+LzOkG1TXVlmHJY1XKHZw5+hQITbZdvOZK8zKH1s/LSZfQkqU9qaUbRx27LXtF4fN8NBlyb3Lb3ROUXmw8V5dD0IF2xIJA5/pyBcHo8Gf5hdrfd+alMK4FuO9rzd71Q7Ncu7djolwt0UGgl2T2icKogtxNXBFQEMc7nWpgmbsWcifE2kinN/k8a98XqgdtAv2QnH2hRHT3WIgRne9lUTXQbwkt6DcU6bfQRq4j6kbqNZ/pRnawKf7a2EzwijNI2SCZ8Z1EMTSgxpIVBrDSBtAMQYnw4ZfI9MQ+Ze1+X2Q2TwtBCE8Py2NJG4zr+BOyoKsNOU7Aa3lNUYZe6L4R/2Rw== ansible@cluster
+linux_user: azure
+agent_name: "{{ resource_prefix }}_agent_name"
+agent_dns_prefix: "{{ resource_prefix }}-node"
+worker_instance_type: Standard_D3_v2
+number_of_workers: 3
+agent_os_type: Linux
+storage_accounts_name: "stroage{{ resource_time }}"
+storage_accounts_sku: Standard_RAGRS
+storage_accounts_kind: Storage
+k8s_service_name: "{{ resource_prefix }}_k8s_service_name"
+admin_username: azureuser
+public_ip_address_name: "{{ resource_prefix }}-ip"
+domain_name_label: "{{ azure_k8s_cluster_name }}-ip"
+acr_group: bdh-infra
+acr_name: infrabase
+aks_fast_deploy: True
+
+installer_workspace: /home/ccloud/vora
+vora_folder_name: SAPVora-2.1.66-DistributedRuntime
+vora_tar_gz_file: SAPVora-2.1.66-DistributedRuntime.tar.gz
+

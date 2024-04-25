@@ -1,0 +1,53 @@
+{% if cloud_platform is defined %}
+platform: {{cloud_platform}}
+{% endif %}
+{% if gardener_project_name is defined %}
+gardener project name: {{gardener_project_name}}
+{% endif %}
+{% if ccloud_os_region_name is defined %}
+gardener shoot region: {{ccloud_os_region_name}}
+{% endif %}
+{% if ccloud_availability_zone is defined %}
+gardener shoot zone: {{ccloud_availability_zone}}
+{% endif %}
+{% if gardener_shoot_name is defined %}
+gardener shoot name: {{gardener_shoot_name}}
+{% endif %}
+{% if k8s_version is defined %}
+gardener shoot kubernetes version: {{k8s_version}}
+{% endif %}
+{% if vorapkg_version is defined %}
+datahub version: {{vorapkg_version}}
+{% endif %}
+{% if vora_kube_namespace is defined %}
+datahub namespace: {{vora_kube_namespace}}
+{% endif %}
+{% if expose_vsystem == "yes" %}
+datahub launch-pad endpoint: {{vsystem_entry}} 
+{% endif %}
+{% if txn_coordinator_entry is defined %}
+datahub vora txn-coordinator endpoint: {{txn_coordinator_entry}}
+{% endif %}
+{% if text_analysis_entry is defined  %}
+datahub text-analysis endpoint: {{text_analysis_entry}}
+{% endif %}
+datahub user tenant name: default
+datahub system tenant name: system
+{% if vora_username is defined %}
+datahub user/system tenant user: {{vora_username}}
+{% endif %}
+{% if vora_password is defined %}
+datahub user tenant password: {{vora_password}}
+{% endif %}
+{% if vora_system_tenant_password is defined %}
+datahub system tenant password: {{vora_system_tenant_password}}
+{% endif %}
+{% if install_vora_via_slcb is defined %}
+datahub install via slcb: {{ install_vora_via_slcb }}
+{% endif %}
+{% if vora_kubernetes_local_pkg is not defined and install_vora_via_slcb is defined and install_vora_via_slcb == "false" %}
+datahub install via installer with package url: {{vora_kube_download_url}}
+{% endif %}
+{% if install_vora_via_slcb is defined and install_vora_via_slcb == "true" %}
+datahub install via slcb with product bridge: {{ product_bridge_flag }}
+{% endif %}

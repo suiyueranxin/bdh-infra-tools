@@ -1,0 +1,140 @@
+{
+    "jobs": [
+        {
+            "type": "docker",
+            "name": "vsystem_preparation_test",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "k8s_creation_upgrade",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "CLOUD_ONLY": "1",
+                "MAX_RUN": "1",
+                "COMPONENT": "VSYSTEM",
+                "COM_DOCKER_IMAGE": "docker.wdf.sap.corp:51022/com.sap.datahub.linuxx86_64/vsystem-tests-docker",
+                "COMPONENT_TEST_NAME": "vsystem_upgrade_test",
+                "TEST_SUITE": "upgrade-test",
+                "UPGRADE_TEST": "PREPARATION",
+                "ENABLE_K8S_DUMP": "yes"
+            },
+            "timeout": 7200,
+            "security_context": {
+                "privileged": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "default_tenant_content_preparation_test",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/app_test/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "k8s_creation_upgrade",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "CLOUD_ONLY": "1",
+                "MAX_RUN": "1",
+                "UPGRADE_TEST": "PREPARATION"
+            },
+            "timeout": 7200
+        },
+        {
+            "type": "docker",
+            "name": "vsystem_validation_test",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "CLOUD_ONLY": "1",
+                "MAX_RUN": "1",
+                "COMPONENT": "VSYSTEM",
+                "COM_DOCKER_IMAGE": "docker.wdf.sap.corp:51022/com.sap.datahub.linuxx86_64/vsystem-tests-docker",
+                "COMPONENT_TEST_NAME": "vsystem_upgrade_test",
+                "TEST_SUITE": "upgrade-test",
+                "UPGRADE_TEST": "VALIDATION",
+                "ENABLE_K8S_DUMP": "yes"
+            },
+            "timeout": 7200,
+            "security_context": {
+                "privileged": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "content_upgrade_test",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "timeout": 10800,
+            "build_only": false,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/upgrade_test_vctl/Dockerfile",
+            "security_context": {
+                "privileged": true
+            },
+            "environment": {
+                "PARENT_INSTALL_JOB": "system_upgrade_<INDEX>_test",
+                "ENV_FILE": "/infrabox/inputs/system_upgrade_<INDEX>_test/env.sh"
+            }
+        },
+        {
+            "type": "docker",
+            "name": "default_tenant_content_validation_test",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/app_test/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "system_upgrade_<INDEX>_test",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "CLOUD_ONLY": "1",
+                "MAX_RUN": "1",
+                "UPGRADE_TEST": "VALIDATION"
+            },
+            "timeout": 7200
+        },
+        {
+            "type": "docker",
+            "name": "default_tenant_content_teardown_test",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/app_test/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "system_upgrade_<INDEX>_test",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "CLOUD_ONLY": "1",
+                "MAX_RUN": "1",
+                "UPGRADE_TEST": "TEARDOWN"
+            },
+            "timeout": 7200
+        }
+    ],
+    "version": 1
+}

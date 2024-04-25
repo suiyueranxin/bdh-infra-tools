@@ -1,0 +1,44 @@
+---
+- assert: { that: "ansible_distribution == 'Ubuntu' " }
+
+- name: (install-docker-ubuntu.yml) install required packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - software-properties-common
+
+
+- debug:
+    msg: "docker repo = {{ docker_repo }}"
+
+- debug:
+    msg: "ansible_distribution_version= {{ ansible_distribution_version }}"
+
+- block:
+  - name: (install-docker-ubuntu.yml) Add repository key for official repo
+    shell: "apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D"
+
+  - name: (install-docker-ubuntu.yml) Add repo for official 16.04
+    shell: add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+    when: ansible_distribution_version == "16.04"
+  when: docker_repo == "official"
+
+- block:
+  - name: (install-docker-ubuntu.yml) Add repository key for community repo
+    shell: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -"
+
+  - name: (install-docker-ubuntu.yml) Add repo for community 16.04
+    shell: add-apt-repository "deb [arch=amd64] https://apt.dockerproject.org/repo ubuntu-xenial main"
+    when: ansible_distribution_version == "16.04"
+  when: docker_repo == "community"
+
+- name: (install-docker-ubuntu.yml) apt-get update
+  shell: apt-get update
+
+- name: (install-docker-ubuntu.yml) install docker package
+  shell: apt-get install -y --allow-unauthenticated docker-engine={{ docker_version }}.*
+

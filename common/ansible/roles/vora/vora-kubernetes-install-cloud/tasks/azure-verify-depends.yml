@@ -1,0 +1,12 @@
+---
+#check docker, helm were installed or not
+- block:
+  - name: check docker
+    shell: "docker version"
+
+  - name: check helm
+    shell: "helm version --client --short | awk '{print $2}'"
+    register: helm_client_result
+
+  - name: assert the helm client version > 2.7.2
+    assert: { that: helm_client_result.stdout > "v2.7.2" }

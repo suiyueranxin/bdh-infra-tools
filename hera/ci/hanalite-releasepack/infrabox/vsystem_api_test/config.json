@@ -1,0 +1,9 @@
+{
+  "environmentVariables": {
+    "DOCKER_REGISTRY": "mo-a0c475016.mo.sap.corp:5000",
+    "DOCKER_REGISTRY_USER": "",
+    "DOCKER_REGISTRY_PASSWORD": "",
+    "TEST_ID": "vsystem-e2e-test"
+  }
+}
+

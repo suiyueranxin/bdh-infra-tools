@@ -1,0 +1,5 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_vsystem_test_base:go1.13.3
+RUN pip install awscli==1.15.34 --upgrade --user && \
+    echo http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/edge/community >> /etc/apk/repositories && \
+    apk add --no-cache --update docker=17.12.1-r0 jq> /dev/null && \
+    ln -s /root/.local/bin/aws /usr/bin/aws

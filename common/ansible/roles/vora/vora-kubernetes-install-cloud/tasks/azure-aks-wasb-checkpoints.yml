@@ -1,0 +1,46 @@
+- name: login az cli
+  shell: "az login --service-principal --username {{ client_id }} --password {{ client_secret }} --tenant {{ tenant }}"
+  no_log: true
+  tags:
+    - install
+
+- name: set subscription id
+  shell: "az account set --subscription '{{ subscription_id }}'"
+  tags:
+    - install
+
+- name: get wasb account
+  shell: "az storage account show-connection-string --name={{aks_storage_account_prefix}}{{azure_resource_location}}"
+  register: result_account
+  no_log: true
+  tags:
+    - install
+
+- name: get wasb account key
+  shell: "az storage account show-connection-string --name={{aks_storage_account_prefix}}{{azure_resource_location}} | jq -r '.connectionString'|awk -F 'AccountKey=' '{print $2}'"
+  register: result_account_key
+  tags:
+    - install
+
+- name: set fact for wasb account key
+  set_fact:
+    aks_storage_account_key: "{{ result_account_key.stdout}}"
+  tags:
+    - install
+
+- name: create container
+  shell: "az storage container create --name={{aks_cluster_name | replace('_', '-') }} --connection-string='{{(result_account.stdout | from_json).connectionString}}'"
+  no_log: true
+  tags:
+    - install
+
+- set_fact:
+    wasb_account_info: "{{(result_account.stdout | from_json).connectionString.replace(';', '&').split('&')[2:] | join('&')}}"
+  tags:
+    - install
+
+- name: upload empty file into wasb to occupy the directory
+  shell: "az storage blob upload --file {{role_path}}/files/placeholder.txt --name=chkt/placeholder.txt --container-name={{aks_cluster_name | replace('_', '-') }} --connection-string='{{(result_account.stdout | from_json).connectionString}}'"
+  no_log: true
+  tags:
+    - install

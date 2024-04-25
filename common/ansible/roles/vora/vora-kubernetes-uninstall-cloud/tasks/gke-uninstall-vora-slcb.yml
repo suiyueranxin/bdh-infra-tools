@@ -1,0 +1,188 @@
+---
+- name: set_fact slcb_init = true
+  set_fact:
+    slcb_init: "true"
+  tags:
+    - uninstall
+- name: generate inifile for slcb init
+  include: generate-inifile.yml
+  tags:
+    - uninstall
+- name: Set SAP Docker private repository
+  set_fact:
+    docker_repository_flag: "--SAP_PV_DOCKER_REPO {{ docker_artifactory }}"
+  tags:
+  - uninstall
+- name: Set SAP Docker repository to use default
+  set_fact:
+    docker_repository_flag: ""
+  when: docker_artifactory is undefined or docker_artifactory == ""
+  tags:
+  - uninstall
+- name: download slcb
+  include: download-slcb.yml
+  tags:
+  - uninstall
+- name: execute docker login
+  shell: "docker login -u _json_key --password-stdin https://{{ gke_docker_registry_name }} < {{ google_application_credentials }}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  tags:
+    - uninstall
+- name: Set product bridge flag 
+  set_fact:
+    product_bridge_flag: "--useBridgeImage {{product_bridge_name}}:{{ vorapkg_version }}"
+  tags:
+  - uninstall
+- name: workaround step for SLCB 1.1.44+
+  shell: "./slcb copy {{ docker_repository_flag }} -i {{ installer_workspace }}/inifile {{ product_bridge_flag }} -u none 2>&1 | tee slcb_copy_workaround.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  register: slcb_copy_workaround_result
+  until: slcb_copy_workaround_result.rc == 0
+  retries: 3
+  delay: 60
+  tags:
+    - uninstall
+- name: slcb init
+  # workaround for SLCB 1.1.44
+  #shell: "./slcb init -i {{ installer_workspace }}/inifile --namespace {{ slc_ns }} {{ docker_repository_flag }} -u none 2>&1 | tee slcb_init_process.log; exit ${PIPESTATUS[0]}"
+  shell: "./slcb init -i {{ installer_workspace }}/inifile --namespace {{ slc_ns }} -u none 2>&1 | tee slcb_init_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  ignore_errors: true
+  register: installation_result_via_slcb
+  until: installation_result_via_slcb.rc == 0
+  retries: 3 # workaround the first slcb init failure
+  delay: 5
+  tags:
+    - uninstall
+- name: dump slcb.log
+  shell: "cat {{ installer_workspace }}/slcb.log"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  tags:
+    - uninstall
+- name: Fail if init failed
+  assert: { that: "installation_result_via_slcb.rc == 0 and installation_result_via_slcb.changed == true" }
+  tags:
+    - uninstall
+- name: slcb mirror
+  shell: "./slcb copy -l debug -i inifile {{ docker_repository_flag }} {{ product_bridge_flag }} -u none 2>&1 | tee slcb_copy_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  register: slcb_copy_result
+  until: slcb_copy_result.rc == 0
+  retries: 3
+  delay: 60
+  tags:
+    - uninstall
+
+- name: set_fact slcb_init = false
+  set_fact:
+    slcb_init: "false"
+  tags:
+    - uninstall
+- name: generate inifile for slcb execute
+  include: generate-inifile.yml
+  tags:
+    - uninstall
+
+- name: uninstall the vora via slcb
+  shell: "./slcb execute -i inifile --namespace {{ slc_ns }} {{ docker_repository_flag }} {{ product_bridge_flag }} -u none 2>&1 | tee slcb_execute_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  ignore_errors: true
+  register: installation_result_via_slcb
+  tags:
+    - uninstall
+  #no_log: true
+
+- block:
+  - name: Create pods logs directory
+    file: path="{{ installer_workspace }}/logs/podlogs" state=directory
+  - name: Collect current logs
+    shell: "python {{role_path}}/files/log_collector.py {{ installer_workspace }}/logs/podlogs --namespace {{ vora_kube_namespace }}"
+    environment:
+      "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - uninstall
+- block:
+  - name: Create pods describe logs directory
+    file:
+      path: "{{ installer_workspace }}/logs/pod_des_logs"
+      state: directory
+  - name: save all pod describe log
+    shell: "python {{role_path}}/../vora-kubernetes-install/files/generate_pods_describe_log.py {{ vora_kube_namespace }} {{ installer_workspace }}/logs/pod_des_logs"
+    environment:
+        "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - uninstall
+
+- name: copy slcb log files to playbook folder
+  shell: "cp {{ installer_workspace }}/slcb*.log ./"
+  args:
+    executable: /bin/bash
+  ignore_errors: true
+  tags:
+    - uninstall
+
+- name: archive the slcb logs folder
+  archive:
+    path: "{{ installer_workspace }}/slcb.log"
+    dest: "{{ installer_workspace }}/{{ slcb_log }}"
+    format: zip
+  ignore_errors: true
+  tags:
+    - uninstall
+
+- name: copy slcb log zip to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ slcb_log }}"
+    dest: "{{ slcb_log }}"
+    flat: yes
+  tags:
+    - uninstall
+
+- name: archive the logs folder
+  archive:
+    path: "{{ installer_workspace }}/logs"
+    dest: "{{ installer_workspace }}/{{ archive_logs }}"
+    format: zip
+  ignore_errors: true
+  tags:
+    - uninstall
+  
+- name: copy logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_logs }}"
+    dest: "{{ archive_logs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - uninstall
+
+- name: Fail if uninstallation via slcb failed
+  assert: { that: "installation_result_via_slcb.rc == 0 and installation_result_via_slcb.changed == true" }
+  tags:
+    - uninstall

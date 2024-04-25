@@ -1,0 +1,8 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-manager/ansible_runtime_on_ccloud_base:latest
+
+# Install minio client
+RUN curl -Lo /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc
+RUN chmod +x  /tmp/mc && sudo mv /tmp/mc /usr/local/bin/
+
+# pip install default connection tooling.
+RUN pip install --upgrade sap-datahub-def-conn -i https://int.repositories.cloud.sap/artifactory/api/pypi/build-milestones-pypi/simple/ --trusted-host int.repositories.cloud.sap

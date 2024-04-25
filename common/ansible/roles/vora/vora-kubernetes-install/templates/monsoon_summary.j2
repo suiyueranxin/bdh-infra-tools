@@ -1,0 +1,18 @@
+platform: monsoon
+{% if k8s_version is defined %}
+kubernetes version: {{k8s_version}}
+{% endif %}
+datahub version: {{vorapkg_version}}
+datahub namespace: {{vora_kube_namespace}}
+datahub user tenant name: default
+datahub system tenant name: system
+datahub user/system tenant user: {{vora_username}}
+datahub user tenant password: {{vora_password}}
+datahub system tenant password: {{vora_system_tenant_password}}
+docker registry address: {{inventory_hostname}}:5000
+{% if expose_vsystem is defined and expose_vsystem == "yes" %}
+datahub launch-pad endpoint: {{vsystem_entry}}
+{% endif %}
+{% if vora_kubernetes_local_pkg is not defined %}
+datahub package url: {{vora_kube_download_url}}
+{% endif %}

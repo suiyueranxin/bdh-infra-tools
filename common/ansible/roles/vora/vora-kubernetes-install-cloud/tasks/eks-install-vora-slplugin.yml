@@ -1,0 +1,353 @@
+---
+#############################################################################################################
+# ------------------------------- # Notes and comments from Erkan Erol # ---------------------------------- #
+# 1. SLP_COMMON_PARAMETERS should not be set in inifile.yml/variables.yml                                   #
+# 2. --accept-license --interactive-security-configuration=no --confirm-settings --skip-preflight-checks    #
+#    --validate-checkpoint-store=no are included in SLP_COMMON_PARAMETERS by default                        #
+# 3. preflight checks are done in slplugin level and install.sh doesn’t do any preflight check in this case #
+# 4. In current version, additional non-existing flags could be added to SLP_EXTRA_PARAMETERS as a hack     #
+#############################################################################################################
+
+# - name: set to run preflight checks
+#   set_fact:
+#     slp_common_parameters: "--run-preflight-checks"
+#   when: bdh_install_preflight_checks == "yes"
+#   tags:
+#     - install
+#     - update
+
+# - name: set to skip preflight checks
+#   set_fact:
+#     slp_common_parameters: "--skip-preflight-checks"
+#   when: bdh_install_preflight_checks != "yes"
+#   tags:
+#     - install
+#     - update
+
+# - name: set common parameters
+#   set_fact:
+#     slp_common_parameters: "{{ slp_common_parameters }} \
+#                             --interactive-security-configuration=no \
+#                             --confirm-settings"
+#   tags:
+#     - install
+#     - update
+
+- name: Get SAPDataHub-Foundation folder name
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder
+  tags:
+    - install
+    - update
+
+- name: set installer path variable
+  set_fact:
+    installer_path: "{{distributed_runtime_folder.files[0].path}}"
+  tags:
+    - install
+    - update
+
+- name: create missing repositories in default
+  shell: "{{ role_path }}/files/aws_create_repositories.sh"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  when: eks_docker_registry_suffix is undefined or eks_docker_registry_suffix == ""
+  tags:
+    - install
+    - update
+
+- name: create missing repositories with suffix
+  shell: "{{ role_path }}/files/aws_create_repositories.sh {{ eks_docker_registry_suffix }}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  when: eks_docker_registry_suffix is defined and eks_docker_registry_suffix != ""
+  tags:
+    - install
+    - update
+
+- name: create missing repositories in vflow registry
+  shell: "{{ role_path }}/files/aws_create_repositories.sh {{ eks_vflow_docker_registry_suffix }}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  when: eks_vflow_docker_registry_suffix is defined and eks_vflow_docker_registry_suffix != ""
+  tags:
+    - install
+    - update
+
+- name: set extra parameters
+  set_fact:
+    slp_extra_parameters: "-e hana.resources.requests.memory={{ hana_resources_requests_memory }} \
+                           -e hana.resources.limits.memory={{ hana_resources_limits_memory }} \
+                           -e vora-vsystem.policy.cacheValidity=5ms \
+                           -e hana.resources.requests.cpu=0.5 \
+                           -e uaa.cpu.min=0.25"
+  tags:
+    - install
+    - update
+
+- name: set args for one node installation
+  set_fact:
+    slp_extra_parameters: "{{ slp_extra_parameters }} \
+                           -e=vora-cluster.components.dlog.replicationFactor=1 \
+                           -e=vora-cluster.components.dlog.standbyFactor=0"
+  when: bdh_one_node_installation == "yes"
+  tags:
+    - install
+  no_log: true
+
+- name: set args for one node and hanalite-dqp-test in push validation
+  set_fact:
+    slp_extra_parameters: "{{ slp_extra_parameters }} \
+                           -e=vora-cluster.components.catalog.resources.limits.memory=\"\" -e=vora-cluster.components.catalog.resources.requests.memory=\"\" \
+                           -e=vora-cluster.components.landscape.resources.limits.memory=\"\" -e=vora-cluster.components.landscape.resources.requests.memory=\"\" \
+                           -e=vora-cluster.components.dlog.resources.limits.memory=\"\" -e=vora-cluster.components.dlog.resources.requests.memory=\"\" \
+                           -e=vora-cluster.components.disk.resources.limits.memory=\"\" -e=vora-cluster.components.disk.resources.requests.memory=\"\" \
+                           -e=vora-cluster.components.relational.resources.limits.memory=\"\" -e=vora-cluster.components.relational.resources.requests.memory=\"\" \
+                           -e=vora-cluster.components.txBroker.resources.limits.memory=\"\" -e=vora-cluster.components.txBroker.resources.requests.memory=\"\" \
+                           -e=vora-cluster.components.txLockManager.resources.limits.memory=\"\" -e=vora-cluster.components.txLockManager.resources.requests.memory=\"\" \
+                           -e=vora-cluster.components.txCoordinator.resources.limits.memory=\"\" -e=vora-cluster.components.txCoordinator.resources.requests.memory=\"\" "
+  when: bdh_one_node_installation == "yes"
+  tags:
+    - install
+
+- name: set enable-network-policies option
+  set_fact:
+    slp_extra_parameters: "{{ slp_extra_parameters }} --enable-network-policies=yes"
+  when: enable_network_policies == "yes"
+  tags:
+    - install
+    - update
+
+- name: set enable-kaniko option to yes
+  set_fact:
+    slp_extra_parameters: "{{ slp_extra_parameters }} --enable-kaniko=yes"
+  when: enable_kaniko == "yes"
+  tags:
+    - install
+
+- name: set enable-kaniko option to no
+  set_fact:
+    slp_extra_parameters: "{{ slp_extra_parameters }} --enable-kaniko=no"
+  when: enable_kaniko == "no"
+  tags:
+    - install
+
+- name: set vsystem-use-external-auth option
+  set_fact:
+    slp_extra_parameters: "{{ slp_extra_parameters }} --vsystem-use-external-auth"
+  when: vsystem_use_external_auth == "yes"
+  tags:
+    - install
+    - update
+
+- name: judge dev config file is exits or not
+  shell: ls {{ dev_config_file }}
+  ignore_errors: True
+  register: dev_config_file_result
+  when: dev_config_file is defined
+  tags:
+    - install
+    - update
+
+- name: set dev config file
+  set_fact:
+    slp_extra_parameters: "{{ slp_extra_parameters }} --dev-config-file={{ dev_config_file }}"
+  when: dev_config_file is defined and dev_config_file_result.rc == 0
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: generate slplugin configuration file
+  template:
+    src: eks_install_slplugin_variables.j2
+    dest: "{{ installer_path }}/slplugin/variables.yml"
+  tags:
+    - install
+    - update
+
+- name: Print out slplugin configuration file
+  shell: "cat {{ installer_path }}/slplugin/variables.yml"
+  tags:
+    - install
+    - update
+
+- name: Set SAP Docker private repository
+  set_fact:
+    docker_repository_flag: "--SAP_PV_DOCKER_REPO {{ docker_artifactory }}"
+  tags:
+  - install
+  - update
+
+- name: Set SAP Docker repository to use default
+  set_fact:
+    docker_repository_flag: ""
+  when: docker_artifactory is undefined or docker_artifactory == ""
+  tags:
+  - install
+  - update
+
+- name: install the vora via slplugin
+  shell: "bin/slplugin execute -i variables.yml -p ../ {{ docker_repository_flag }} -u none 2>&1 | tee {{ installer_workspace }}/install_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}/slplugin"
+    executable: /bin/bash
+  ignore_errors: true
+  register: installation_result_via_slplugin
+  tags:
+    - install
+    - update
+  no_log: true
+
+- block:
+  - name: Create pods logs directory
+    file: path="{{ installer_path }}/logs/podlogs" state=directory
+  - name: Collect current logs
+    shell: "{{ installer_path }}/tools/log_collector.py {{ installer_path }}/logs/podlogs --namespace {{ vora_kube_namespace }}"
+    environment:
+      "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods describe logs directory
+    file:
+      path: "{{ installer_path }}/logs/pod_des_logs"
+      state: directory
+  - name: save all pod describe log
+    shell: "python {{role_path}}/../vora-kubernetes-install/files/generate_pods_describe_log.py {{ vora_kube_namespace }} {{ installer_path }}/logs/pod_des_logs"
+    environment:
+        "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods logs directory
+    file: path="{{ installer_path }}/logs/podlogs" state=directory
+  - name: Collect current logs
+    shell: "{{ installer_path }}/tools/log_collector.py {{ installer_path }}/logs/podlogs --namespace {{ vora_kube_namespace }}"
+    environment:
+      "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods describe logs directory
+    file:
+      path: "{{ installer_path }}/logs/pod_des_logs"
+      state: directory
+  - name: save all pod describe log
+    shell: "python {{role_path}}/../vora-kubernetes-install/files/generate_pods_describe_log.py {{ vora_kube_namespace }} {{ installer_path }}/logs/pod_des_logs"
+    environment:
+        "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the logs folder
+  archive:
+    path: "{{ installer_path }}/logs"
+    dest: "{{ installer_workspace }}/{{ archive_logs }}"
+    format: zip
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_logs }}"
+    dest: "{{ archive_logs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the tools folder
+  archive:
+    path: "{{ installer_path }}/tools"
+    dest: "{{ installer_workspace }}/{{ archive_tools }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the certs folder
+  archive:
+    path: "{{ installer_path }}/deployment/certs"
+    dest: "{{ installer_workspace }}/{{ certs }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_tools }}"
+    dest: "{{ archive_tools }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy certs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ certs }}"
+    dest: "{{ certs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the slplugin logs folder
+  archive:
+    path: "{{ installer_path }}/slplugin/work"
+    dest: "{{ installer_workspace }}/{{ slplugin_log }}"
+    format: zip
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy slplugin logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ slplugin_log }}"
+    dest: "{{ slplugin_log }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: Fail if installation via slplugin failed
+  assert: { that: "installation_result_via_slplugin.rc == 0 and installation_result_via_slplugin.changed == true" }
+  tags:
+    - install
+    - update

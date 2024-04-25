@@ -1,0 +1,29 @@
+---
+- assert:
+    that:  ansible_os_family == "Debian"
+
+- name: Update apt packages
+  apt:
+    update_cache: yes
+  tags:
+    - install
+
+- name: Install python library related
+  package:
+    name={{ item }}
+  with_items:
+    - python-pip
+    - python-dev
+    - libssl-dev
+    - openssh-client
+  tags:
+    - install
+
+- name: Install library by pip
+  pip:
+    name={{ item }}
+  with_items:
+    - pyyaml
+  tags:
+    - install
+

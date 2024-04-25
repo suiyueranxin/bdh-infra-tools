@@ -1,0 +1,235 @@
+{% if cloud_platform == "gke" %}
+SLP_BRIDGE_REPOSITORY: {{ gke_docker_registry_address}}
+SLP_DOCKER_REGISTRY: {{ gke_docker_registry_address }}
+KUBECONFIG: {{ gke_k8s_cluster_kubeconfig }}
+{% endif %}
+{% if cloud_platform == "eks" %}
+SLP_BRIDGE_REPOSITORY: {{ eks_docker_install_registry }}
+SLP_DOCKER_REGISTRY: {{ eks_docker_install_registry }}
+KUBECONFIG: {{ eks_k8s_cluster_kubeconfig }}
+{% endif %}
+{% if cloud_platform == "azure-aks" %}
+SLP_BRIDGE_REPOSITORY: {{ aks_docker_install_registry }}
+SLP_DOCKER_REGISTRY: {{ aks_docker_install_registry }}
+KUBECONFIG: {{ azure_kubeconfig }}
+{% endif %}
+
+{% if cloud_platform == "gardener-ccloud" %}
+KUBECONFIG: "{{ gardener_k8s_cluster_kubeconfig }}"
+SLP_BRIDGE_REPOSITORY: {{ gardener_docker_registry_address }}
+SLP_DOCKER_REGISTRY: "{{ gardener_docker_registry_address }}"
+SLP_CONFIGURE_REGISTRY_FOR_VFLOW: 'true'
+SLP_VFLOW_REGISTRY: '{{ gardener_docker_registry_address }}'
+{% endif %}
+
+{% if install_flag == '--update' %}
+SLP_ACTIVITY: UPGRADE
+UPGRADE_NOTE_CONFIRMATION: 'true'
+UPGRADE_VORA_REMOVAL_CONFIRMATION: 'true'
+{% elif install_flag == '' %}
+SLP_ACTIVITY: INSTALL
+{% endif %}
+
+{% if gcp_vflow_docker_registry_suffix is defined and gcp_vflow_docker_registry_suffix|length %}
+SLP_CONFIGURE_REGISTRY_FOR_VFLOW: 'true'
+SLP_VFLOW_REGISTRY: '{{ gke_docker_registry_name }}/{{ gcloud_project_id }}/{{ gcp_vflow_docker_registry_suffix }}'
+{% endif %}
+
+{% if azure_vflow_registry_name is defined and azure_vflow_registry_name|length %}
+SLP_CONFIGURE_REGISTRY_FOR_VFLOW: 'true'
+SLP_VFLOW_REGISTRY: '{{ azure_vflow_registry_name }}.azurecr.io'
+SLP_VFLOW_REGISTRY_USER: '{{ acr_username.stdout|replace("\"", "") }}'
+SLP_VFLOW_REGISTRY_PASSWORD: '{{ acr_password.stdout|replace("\"", "") }}'
+{% endif %}
+
+{% if eks_vflow_install_registry is defined and eks_vflow_install_registry != "" %}
+SLP_CONFIGURE_REGISTRY_FOR_VFLOW: 'true'
+SLP_VFLOW_REGISTRY: '{{ eks_vflow_install_registry }}'
+{% endif %}
+
+{% if slcb_init == true %}
+SLP_NAMESPACE: {{ slc_ns }}
+{% else %}
+SLP_NAMESPACE: '{{ vora_kube_namespace }}'
+{% endif %}
+SAP_DOCKER_REPO: '{{ docker_artifactory }}'
+IMAGES_SAP_ANON: 'true'
+SYSTEM_ADMIN_PASSWORD: '{{ vora_system_tenant_password }}'
+SLP_VORA_ADMIN_USERNAME: '{{ vora_username }}'
+DEFAULT_ADMIN_PASSWORD: '{{ vora_password }}'
+
+{% if enable_network_policies == 'yes' %}
+SLP_ENABLE_NETWORK_POLICIES: 'true'
+{% else %}
+SLP_ENABLE_NETWORK_POLICIES: 'false'
+{% endif %}
+{% if enable_kaniko == 'yes' %}
+SLP_ENABLE_KANIKO: 'true'
+{% else %}
+SLP_ENABLE_KANIKO: 'false'
+{% endif %}
+
+{% if enable_storage_checkpoint == 'yes' %}
+SLP_ENABLE_CHECKPOINT_STORE: 'true'
+SLP_VALIDATE_CHECKPOINT_STORE: 'true'
+{% if cloud_platform == "gke" %}
+SLP_CHECKPOINT_STORE_TYPE_RAW: 'gcs'
+SLP_CHECKPOINT_GCS_ISS: {{ gcloud_sa_client_email }}
+SLP_CHECKPOINT_GCS_KEY: "{{ gcloud_service_account_pk }}"
+SLP_CHECKPOINT_GCS_PROJECT_ID: {{ gcloud_project_id }}
+{% if enable_restore is defined and enable_restore == 'true' %}
+SLP_CHECKPOINT_GCS_PATH: {{ backup_bucket.stdout }}
+{% else %}
+SLP_CHECKPOINT_GCS_PATH: {{ gke_bucket_name }}
+{% endif %}
+{% endif %}
+{% if cloud_platform == "eks" %}
+SLP_CHECKPOINT_STORE_TYPE_RAW: "s3"
+SLP_CHECKPOINT_S3_ACCESS_KEY: {{ aws_access_key }}
+SLP_CHECKPOINT_S3_SECRET_ACCESS_KEY: {{ aws_secret_key }}
+SLP_CHECKPOINT_S3_REGION: {{ eks_aws_region }}
+SLP_CONFIGURE_DOCKER_LOG_PATH: 'true'
+SLP_DOCKER_LOG_PATH: "disabled"
+{% if enable_restore is defined and enable_restore == 'true' %}
+SLP_CHECKPOINT_S3_PATH: {{ backup_bucket.stdout }}
+{% else %}
+SLP_CHECKPOINT_S3_PATH: {{ eks_aws_s3_bucket_name }}/{{ eks_k8s_cluster_name }}
+{% endif %}
+{% if enable_backup is defined and enable_backup == 'true' %}
+SLP_RCLONE_DISABLE_CHECKSUM: 'true'
+{% endif %}
+{% endif %}
+{% if cloud_platform == "azure-aks" %}
+SLP_CHECKPOINT_STORE_TYPE_RAW: "wasb"
+SLP_CHECKPOINT_WASB_ACCOUNT_NAME: {{aks_storage_account_prefix}}{{azure_resource_location}}
+SLP_CHECKPOINT_WASB_ACCOUNT_KEY: {{aks_storage_account_key}}
+SLP_CONFIGURE_DOCKER_LOG_PATH: 'true'
+SLP_DOCKER_LOG_PATH: "disabled"
+{% if enable_restore is defined and enable_restore == 'true' %}
+SLP_CHECKPOINT_WASB_PATH: {{ backup_bucket.stdout }}
+{% else %}
+SLP_CHECKPOINT_WASB_PATH: "/{{ aks_cluster_name | replace('_', '-') }}/chkt"
+{% endif %}
+{% endif %}
+{% if cloud_platform == "gardener-ccloud" %}
+SLP_CHECKPOINT_STORE_TYPE_RAW: "s3"
+SLP_CHECKPOINT_S3_ACCESS_KEY: {{ s3_access_key }}
+SLP_CHECKPOINT_S3_SECRET_ACCESS_KEY: {{ s3_secret_access_key }}
+SLP_CHECKPOINT_S3_REGION: "eu-central-1"
+SLP_CONFIGURE_DOCKER_LOG_PATH: 'true'
+SLP_DOCKER_LOG_PATH: "disabled"
+{% if enable_restore is defined and enable_restore == 'true' %}
+SLP_CHECKPOINT_S3_PATH: {{ backup_bucket.stdout }}
+{% else %}
+SLP_CHECKPOINT_S3_PATH: "data-hub-im-kms2/{{ on_premise_cluster_name }}"
+{% endif %}
+{% if enable_backup is defined and enable_backup == 'true' %}
+SLP_RCLONE_DISABLE_CHECKSUM: 'true'
+{% endif %}
+{% endif %}
+{% else %}
+SLP_ENABLE_CHECKPOINT_STORE: 'false'
+{% endif %}
+
+{% if enable_backup is defined and enable_backup == 'true' %}
+SLP_ENABLE_BACKUP: 'true'
+BACKUP_RESTORE_NOTE_CONFIRMATION: 'true'
+SLP_BACKUP_CRON_SCHEDULE: '*/10 * * * *'
+
+{% if enable_restore is defined and enable_restore == 'true' %}
+SLP_RESTORE: 'true'
+SLP_RESTORE_SYSTEMID: {{ backup_name.stdout }}
+SLP_RESTORE_DATE: {{ backup_date.stdout }}
+{% endif %}
+{% if cloud_platform == "gardener-ccloud" %}
+SLP_RCLONE_CONF_NO_CHECK_CERTIFICATE: 'true'
+SLP_DOCKER_REGISTRY_ANON: true
+SLP_BRIDGE_REPOSITORY_ANON: true
+{% endif %}
+{% else %}
+SLP_ENABLE_BACKUP: 'false'
+{% endif %}
+
+ADMIN_USER: {{ slcb_default_bridge_admin_user }}
+ADMIN_PASSWORD: {{ slcb_default_bridge_admin_password }}
+
+DOCKER_USER: {{ artifactory_login_username }}
+DOCKER_USER_PASS: {{ artifactory_login_password }}
+SLP_CERT_DOMAIN: {{ cert_domain }}
+LICENSE_AGREEMENT: true
+NON_INTERACTIVE_MODE: true
+SLP_TIMEOUT: 5400
+LOAD_BALANCER_SOURCE_RANGES: "0.0.0.0/0"
+
+SLP_CUSTOM_PROFILE: |-
+  #!baseProfile: {{ base_profile }}
+{% if bdh_one_node_installation != "yes" %}
+  hana:
+    syncSleepTimeInSeconds: 60
+    memoryLimit: {{ hana_resources_limits_memory }}
+    memoryRequest: {{ hana_resources_requests_memory }}
+    overrides: |-
+      profile: dev
+      resources:
+        requests:
+          cpu: 1
+      backup:
+        logBackupInterval: 60
+  uaa:
+    overrides: |-
+      cpu:
+        min: 0.5
+  vsystem:
+    vSystem:
+      logLevel: debug
+    overrides: |-
+      restrictFeatureFlagOnPrem: false
+      vSystem:
+        features:
+          enforceNonRootApps: true
+          enableTenantAssignablePolicies: true
+{% endif %}
+{% if bdh_one_node_installation == "yes" %}
+  hana:
+    syncSleepTimeInSeconds: 60
+    traceStorage: 1Gi
+    dataStorage: 10Gi
+    memoryLimit: 6Gi
+    memoryRequest: 2Gi
+    overrides: |-
+      profile: dev
+      resources:
+        requests:
+          cpu: 0
+      backup:
+        logBackupInterval: 60
+  storageGateway:
+    replicas: 1
+  uaa:
+    overrides: |-
+      cpu:
+        min: 0.25
+  consul:
+    replicas: 1
+  vsystem:
+    vSystem:
+      logLevel: info
+    overrides: |-
+      restrictFeatureFlagOnPrem: false
+      vSystem:
+        features:
+          enforceNonRootApps: true
+      applicationRuntimeStorage:
+        enabled: true
+        pvcMinimumSize: 100Gi
+  voraCluster:
+    template:
+      components:
+        dlog:
+          replicationFactor: "1"
+          standbyFactor: "0"
+        disk:
+          storageSize: 50Gi
+          replicas: "1"
+{% endif %}
+

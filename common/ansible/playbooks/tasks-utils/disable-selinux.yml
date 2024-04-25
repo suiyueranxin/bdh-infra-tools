@@ -1,0 +1,9 @@
+---
+- name: Check if selinux exists
+  stat: path=/etc/selinux/config
+  register: selinux_status
+  when: ansible_os_family == "RedHat"
+
+- name: Disable selinux
+  selinux: state=disabled
+  when: ansible_os_family == "RedHat" and selinux_status.stat.exists

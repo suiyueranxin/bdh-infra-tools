@@ -1,0 +1,21 @@
+---
+- include_vars:
+    file: "{{role_path}}/../route53-vars.yml"
+
+- name: create dns record {{dns_record}} with IM API
+  uri:
+    url: "{{route53_im_api_url}}/{{dns_record}}"
+    method: POST
+    return_content: yes
+    status_code: 200
+    body: "{\"type\": \"{{record_type}}\", \"value\": \"{{dns_value}}\"}"
+    body_format: json
+    validate_certs: no
+    force_basic_auth: yes
+    headers:
+      Authorization: bearer {{im_auth_header}}
+  register: result
+  until: result.status == 200
+  retries: 3 # Wait for 3 minutes max
+  delay: 60
+  changed_when: false

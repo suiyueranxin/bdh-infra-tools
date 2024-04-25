@@ -1,0 +1,293 @@
+---
+- name: Get SAPDataHub-Foundation folder name
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder
+  tags:
+    - install
+    - update
+
+- name: set installer path variable
+  set_fact:
+    installer_path: "{{distributed_runtime_folder.files[0].path}}"
+  tags:
+    - install
+    - update
+
+- name: create missing repositories in default
+  shell: "{{ role_path }}/files/aws_create_repositories.sh"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  when: eks_docker_registry_suffix is undefined or eks_docker_registry_suffix == ""
+  tags:
+    - install
+    - update
+
+- name: create missing repositories with suffix
+  shell: "{{ role_path }}/files/aws_create_repositories.sh {{ eks_docker_registry_suffix }}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  when: eks_docker_registry_suffix is defined and eks_docker_registry_suffix != ""
+  tags:
+    - install
+    - update
+
+- name: create missing repositories in vflow registry
+  shell: "{{ role_path }}/files/aws_create_repositories.sh {{ eks_vflow_docker_registry_suffix }}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  when: eks_vflow_docker_registry_suffix is defined and eks_vflow_docker_registry_suffix != ""
+  tags:
+    - install
+    - update
+
+- name: set skip preflight checks
+  set_fact:
+    skip_preflight_checks: " "
+  when: bdh_install_preflight_checks == "yes"
+  tags:
+    - install
+    - update
+
+- name: set skip preflight checks
+  set_fact:
+    skip_preflight_checks: " --skip-preflight-checks"
+  when: bdh_install_preflight_checks != "yes"
+  tags:
+    - install
+    - update
+
+- name: set installer base command
+  set_fact:
+    installer_base_cmd: "{{installer_common_cmd}} \
+                         {{install_flag}} \
+                         {{skip_preflight_checks}} "
+  tags:
+    - install
+    - update
+
+- name: set installation docker registry
+  set_fact:
+    installer_base_cmd: "--docker-registry={{ eks_docker_install_registry }} \
+                         {{ installer_base_cmd }} "
+  tags:
+    - install
+    - update
+
+- name: set vflow docker registry
+  set_fact:
+    installer_base_cmd: "--vflow-registry={{ eks_vflow_install_registry }} \
+                         {{ installer_base_cmd }} "
+  when: eks_vflow_install_registry is defined and eks_vflow_install_registry != ""
+  tags:
+    - install
+    - update
+
+- name: Pass enable checkpoint store to installer
+  set_fact:
+    installer_base_cmd: "{{ installer_base_cmd }} \
+                        --enable-checkpoint-store=yes \
+                        --checkpoint-store-type=s3 \
+                        --checkpoint-store-connection='{{eks_checkpoint_store_connection}}' \
+                        --validate-checkpoint-store=yes "
+  when: enable_storage_checkpoint == "yes"
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: Pass disable checkpoint store to installer
+  set_fact:
+    installer_base_cmd: "{{ installer_base_cmd }} --enable-checkpoint-store=no"
+  when: enable_storage_checkpoint != "yes"
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: Adapt installer flags for newest
+  set_fact:
+    cert_args: "--cert-domain={{ cert_domain }}"
+  tags:
+    - install
+    - update
+
+- name: pass certs parameters to installer
+  set_fact:
+    installer_base_cmd: "{{ installer_base_cmd }} {{cert_args}}"
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: judge dev config file is exits or not
+  shell: ls {{ dev_config_file }}
+  ignore_errors: True
+  register: dev_config_file_result
+  when: dev_config_file is defined
+  tags:
+    - install
+    - update
+
+- name: set dev config file
+  set_fact:
+    installer_base_cmd: "{{installer_base_cmd}} --dev-config-file={{ dev_config_file }}"
+  when: dev_config_file is defined and dev_config_file_result.rc == 0
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: set args for one node installation
+  set_fact:
+    installer_base_cmd: "{{installer_base_cmd}} -e=vora-cluster.components.dlog.replicationFactor=1 -e=vora-cluster.components.dlog.standbyFactor=0 "
+  when: bdh_one_node_installation == "yes"
+  tags:
+    - install
+  no_log: true
+
+- name: set args for one node and hanalite-dqp-test in push validation
+  set_fact:
+    installer_base_cmd: "{{installer_base_cmd}} -e=vora-cluster.components.catalog.resources.limits.memory=\"\" \
+                        -e=vora-cluster.components.catalog.resources.requests.memory=\"\" -e=vora-cluster.components.landscape.resources.limits.memory=\"\" \
+                        -e=vora-cluster.components.landscape.resources.requests.memory=\"\" -e=vora-cluster.components.dlog.resources.limits.memory=\"\" \
+                        -e=vora-cluster.components.dlog.resources.requests.memory=\"\" -e=vora-cluster.components.disk.resources.limits.memory=\"\" \
+                        -e=vora-cluster.components.disk.resources.requests.memory=\"\" -e=vora-cluster.components.relational.resources.limits.memory=\"\" \
+                        -e=vora-cluster.components.relational.resources.requests.memory=\"\" -e=vora-cluster.components.txBroker.resources.limits.memory=\"\" \
+                        -e=vora-cluster.components.txBroker.resources.requests.memory=\"\" -e=vora-cluster.components.txLockManager.resources.limits.memory=\"\" \
+                        -e=vora-cluster.components.txLockManager.resources.requests.memory=\"\" -e=vora-cluster.components.txCoordinator.resources.limits.memory=\"\" \
+                        -e=vora-cluster.components.txCoordinator.resources.requests.memory=\"\" "
+  when: bdh_one_node_installation == "yes"
+  tags:
+    - install
+
+- block:
+  - name: Create logs directory
+    file: path="{{ installer_path }}/logs/im_install" state=directory
+  - name: Save Install Cmd
+    shell: python {{role_path}}/files/save_install_cmd.py {{ installer_path }}/logs/im_install "./install.sh {{installer_base_cmd}}"
+    ignore_errors: True
+    args:
+      executable: /bin/bash
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: install the vora
+  shell: "./install.sh {{ installer_base_cmd }} 2>&1 | tee {{installer_workspace}}/install_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  register: installation_result
+  tags:
+    - install
+    - update
+  no_log: true
+
+- block:
+  - name: Create pods logs directory
+    file: path="{{ installer_path }}/logs/podlogs" state=directory
+  - name: Collect current logs
+    shell: "{{ installer_path }}/tools/log_collector.py {{ installer_path }}/logs/podlogs --namespace {{ vora_kube_namespace }}"
+    environment:
+      "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods describe logs directory
+    file:
+      path: "{{ installer_path }}/logs/pod_des_logs"
+      state: directory
+  - name: save all pod describe log
+    shell: "python {{role_path}}/../vora-kubernetes-install/files/generate_pods_describe_log.py {{ vora_kube_namespace }} {{ installer_path }}/logs/pod_des_logs"
+    environment:
+        "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the logs folder
+  archive:
+    path: "{{ installer_path }}/logs"
+    dest: "{{ installer_workspace }}/{{ archive_logs }}"
+    format: zip
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_logs }}"
+    dest: "{{ archive_logs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the tools folder
+  archive:
+    path: "{{ installer_path }}/tools"
+    dest: "{{ installer_workspace }}/{{ archive_tools }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the certs folder
+  archive:
+    path: "{{ installer_path }}/deployment/certs"
+    dest: "{{ installer_workspace }}/{{ certs }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_tools }}"
+    dest: "{{ archive_tools }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy certs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ certs }}"
+    dest: "{{ certs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: Fail if installation failed
+  assert: { that: "installation_result.rc == 0 and installation_result.changed == true" }
+  tags:
+    - install
+    - update

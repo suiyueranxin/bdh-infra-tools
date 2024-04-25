@@ -1,0 +1,34 @@
+---
+# Starts (a already stopped) monsoon cluster on VM level.
+
+# Be aware: this required requires Ansbile >= 2.2.
+# Ansible 2.1 has a bug related to starting/stopping EC2 instances.
+
+
+
+- name: Start Monsoon cluster
+  hosts: workstation
+  tasks:
+    - assert: { that: ansible_version.major > 2 or
+                 (ansible_version.major == 2 and ansible_version.minor >= 2 ) }
+
+    - name: Start instances of Monsoon cluster
+      ec2:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        ec2_url: "{{ ec2_endpoint_url }}"
+        validate_certs: no
+        state: running
+        source_dest_check: false
+#        wait: True
+        instance_ids: "{{ hostvars[item].inventory_hostname_short }}"
+      with_items: "{{ groups['nodes'] }}"
+
+
+    - name: Wait until SSH is available
+      wait_for:
+        host: "{{ hostvars[item].inventory_hostname }}"
+        port: 22
+        timeout: 320
+        state: started
+      with_items: "{{ groups['nodes'] }}"

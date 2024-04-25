@@ -1,0 +1,17 @@
+---
+- set_fact:
+    aws_region: "{{kops_aws_region}}"
+  when: kops_aws_region is defined
+
+- set_fact:
+    aws_region: "{{gardener_aws_region}}"
+  when: gardener_aws_region is defined
+
+- name: set aws configuration
+  shell: "{{role_path}}/files/aws-set-config.sh {{ aws_access_key }} {{ aws_secret_key }} {{ aws_region }}"
+
+- debug:
+    var: s3_bucket_name
+
+- name: delete the s3 bucket
+  shell: "{{ role_path }}/files/delete-bucket.sh {{ s3_bucket_name }}"

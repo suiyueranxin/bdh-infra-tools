@@ -1,0 +1,12 @@
+---
+- name: get aws instance ebs info
+    shell: "aws ec2 describe-instance-attribute --instance-id={{ aws_ec2_instance_id }} --attribute=blockDeviceMapping --region={{ aws_region }} | jq '.BlockDeviceMappings'"
+          register: all_ebs_info
+
+- name: set fact for all ebs info
+    set_fact:
+            all_ebs: "{{ (all_ebs_info.stdout | from_json) | list }}"
+
+- include: aws_ebs_delete_on_termination.yml ins_id={{ aws_ec2_instance_id }} ebs={{ item }} flag={{ flag_value }}
+    with_items: "{{ all_ebs }}"
+          when: all_ebs_info.rc == 0 and all_ebs_info.stdout != ""

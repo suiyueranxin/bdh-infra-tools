@@ -1,0 +1,71 @@
+---
+- name: login az cli
+  shell: "az login --service-principal --username {{ client_id }} --password {{ client_secret }} --tenant {{ tenant }}"
+  tags:
+  - install
+  - update
+
+
+- name: Lookup resource group
+  shell: "az group exists --name {{azure_resource_group}}"
+  register: rg_result
+  tags:
+  - install
+  - update
+
+- name: Create resource group
+  shell: "az group create --name {{azure_resource_group}} --location {{azure_resource_location}}"
+  when: rg_result.stdout == "false"
+  tags:
+  - install
+  - update
+
+- shell: "adl_name=$(echo {{aks_cluster_name}} | sed 's/-//g'  | sed 's/_//g') | echo ${adl_name:0:18}$RANDOM"
+  register: output
+  args:
+    executable: /bin/bash
+  tags:
+  - install
+  - update
+
+- set_fact:
+    adl_name: "{{output.stdout}}"
+  tags:
+  - install
+  - update
+
+- name: Lookup data lake
+  shell: "az dls account show -n {{adl_name}}"
+  ignore_errors: yes
+  register: adl_result
+  tags:
+  - install
+  - update
+
+- set_fact:
+    adl_location: "eastus2"
+  when: azure_resource_location == "eastus"
+  tags:
+  - install
+  - update
+
+- set_fact:
+    adl_location: "westeurope"
+  when: azure_resource_location != "eastus"
+  tags:
+  - install
+  - update
+
+- name: Create Azure data lake store
+  shell: "az dls account create --resource-group {{azure_resource_group}} --location {{adl_location}} --disable-encryption --account {{adl_name}} --tier Consumption"
+  when: adl_result.rc != 0
+  tags:
+  - install
+  - update
+
+- name: set fact for adl
+  set_fact:
+    adl_url: "ClientId={{client_id}}&ClientSecret={{client_secret}}&TenantId={{tenant}}&AccountName={{adl_name}}"
+  tags:
+  - install
+  - update

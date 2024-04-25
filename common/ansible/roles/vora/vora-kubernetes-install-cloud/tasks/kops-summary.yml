@@ -1,0 +1,27 @@
+---
+- name: get secret of cluster
+  shell: "kops get secrets kube --type secret --state=s3://{{ kops_k8s_cluster_name }} -o plaintext"
+  register: result_secrets
+  tags:
+    - install
+    - update
+
+- debug:
+    msg: "cluster dashboard account: admin, {{ result_secrets.stdout.strip() }}"
+  tags:
+    - install
+    - update
+
+- set_fact:
+    dashboard_password: "{{ result_secrets.stdout.strip() }}"
+  tags:
+    - install
+    - update
+
+- name: generate summary file
+  template:
+    src: kops_summary.j2
+    dest: "{{ playbook_dir }}/summary.log"
+  tags:
+    - install
+    - update

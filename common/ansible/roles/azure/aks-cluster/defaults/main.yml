@@ -1,0 +1,10 @@
+aks_cluster_name: "vora-k8s"
+worker_instance_type: Standard_D3_v2
+number_of_workers: 3
+k8s_version: "1.8.7"
+ssh_public_key_path: "{{role_path}}/../../../id_rsa.pub"
+azure_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/azure/KUBECONFIG"
+azure_resource_location: "westeurope"
+acr_sku: "Basic"
+acr_admin_enabled: True
+aks_node_disksize: 100

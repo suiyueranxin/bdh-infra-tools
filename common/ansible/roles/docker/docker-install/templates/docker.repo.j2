@@ -1,0 +1,9 @@
+[dockerrepo]
+name=Docker Repository
+baseurl=https://yum.dockerproject.org/repo/main/centos/7/
+enabled=1
+gpgcheck=1
+gpgkey=https://yum.dockerproject.org/gpg
+{% if cluster_provider|default() == "monsoon" %}
+proxy={{ ansible_env.http_proxy }}
+{% endif %}

@@ -1,0 +1,21 @@
+---
+- name: set parameters for docker regirstry
+  shell: "./vctl login https://{{ eks_k8s_cluster_name | replace('_', '-') }}-eks.infra.{{ eks_dns_zone }} default {{vora_username}} --password {{vora_password}}  --insecure;./vctl apps param set vflow.aws.iamRole 'arn:aws:iam::990498310577:role/{{ cluster_eks_nodearn_instance_role }}' "
+  ignore_errors: true
+  args:
+    executable: /bin/bash
+    chdir: "{{ installer_path }}/tools"
+  when: installer_path is defined and installer_path != ""
+  tags:
+    - install
+    - update
+
+- name: set parameters for docker regirstry
+  shell: "vctl login https://{{ eks_k8s_cluster_name | replace('_', '-') }}-eks.infra.{{ eks_dns_zone }} default {{vora_username}} --password {{vora_password}}  --insecure;vctl apps param set vflow.aws.iamRole 'arn:aws:iam::990498310577:role/{{ cluster_eks_nodearn_instance_role }}'"
+  ignore_errors: true
+  args:
+    executable: /bin/bash
+  when: installer_path is undefined or installer_path == ""
+  tags:
+    - install
+    - update

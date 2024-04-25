@@ -1,0 +1,6 @@
+---
+- include: bypass-proxy-on-monsoon-repos.yml
+  when: ansible_domain == 'mo.sap.corp' and ansible_connection != 'docker'
+
+- include: bypass-proxy-on-ccloud-repos.yml
+  when: ansible_domain.find('openstack') != -1 and ansible_connection != 'docker'

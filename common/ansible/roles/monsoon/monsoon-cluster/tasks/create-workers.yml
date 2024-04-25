@@ -1,0 +1,42 @@
+---
+- name: Create worker machines on Monsoon
+  ec2:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    zone: "{{ monsoon_zone }}"
+    image: "{{ worker_image }}"
+    instance_type: "{{ worker_instance_type }}"
+    count: "{{ number_of_workers }}"
+    wait: yes
+    wait_timeout: 1000
+    user_data: "#!/bin/bash\nmkdir -p /root/.ssh\ncat>>/root/.ssh/authorized_keys<<EOF\n{{ lookup('file', 'id_rsa.pub') }}\n"
+    validate_certs: no
+  register: created_workers
+  environment:
+    BOTO_ENDPOINTS: "{{ role_path }}/files/boto_endpoints.json"
+
+- name: Set create_workers as fact for inventory file template
+  set_fact:
+    worker_instances: "{{ created_workers.instances }}"
+
+- name: Create worker tag sequence
+  debug: msg="{{ item }}"
+  with_sequence: start=0 count="{{ number_of_workers }}" format={{ worker_name_prefix }}%02d
+  no_log: True
+  register: worker_tags
+
+- name: Tag worker instances
+  ec2_tag:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    resource: "{{ item.0.id }}"
+    validate_certs: no
+    tags:
+      Name: "{{ item.1.msg }}"
+  with_together:
+    - "{{ created_workers.instances }}"
+    - "{{ worker_tags.results }}"
+  environment:
+    BOTO_ENDPOINTS: "{{ role_path }}/files/boto_endpoints.json"

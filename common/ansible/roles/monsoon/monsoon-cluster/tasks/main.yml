@@ -1,0 +1,21 @@
+---
+- include: assert-images.yml
+- include: create-master.yml
+- include: create-workers.yml
+- include: create-inventory-file.yml
+- include: create-volumes.yml machines={{ master_instances + worker_instances }}
+  when: monsoon_volume_size != 0
+- include: wait-until-instances-ready.yml machines={{ master_instances }}
+- include: wait-until-instances-ready.yml machines={{ worker_instances }}
+
+# TODO: Investigate why nodes in Santa Clara are not completely ready
+# after deployment. Actually, after the deployment, they are shown in
+# monsoon without OS or ansible version and the subsequent execution of
+# ansible scripts fails due to non-reachability of nodes. Waiting for 3
+# minutes before continuing is a rule of thumb to make sure nodes are
+# properly assigned an OS and an ansible version before going ahead.
+- name: Wait 180 seconds for nodes in Santa Clara to be fully settled down
+  pause: seconds=180
+  when: monsoon_zone == "sc_1"
+
+- meta: refresh_inventory

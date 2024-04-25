@@ -1,0 +1,48 @@
+- block:
+  - name: generate the ingress.yaml to tmp dir
+    template:
+      src: gardener_ingress.yaml.j2
+      dest: "{{ installer_workspace }}/ingress_{{ gardener_shoot_name }}.yaml"
+    tags:
+      - install
+
+  - name: deploy the ingress
+    shell: "kubectl create -n {{ vora_kube_namespace }} -f {{ installer_workspace }}/ingress_{{ gardener_shoot_name }}.yaml"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    tags:
+      - install
+
+  - name: set vsystem entry point
+    set_fact:
+      vsystem_entry: "https://vsystem.{{ gardener_shoot_name }}.{{ gardener_project_name }}.shoot.canary.k8s-hana.ondemand.com"
+    tags:
+      - install
+
+  - debug:
+      msg: "{{ vsystem_entry }}"
+    tags:
+      - install
+
+  - name: expose vsystem node port
+    shell: "kubectl -n {{ vora_kube_namespace }} expose service vsystem --type NodePort --name=vsystem-ext"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: patch vsystem-ext service
+    shell: "kubectl -n {{ vora_kube_namespace }} patch service vsystem-ext -p '{\"spec\": {\"ports\" : [{\"name\": \"vsystem-ext\", \"port\" : 8797}]}}'"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: patch vsystem-ext service
+    shell: "kubectl -n {{ vora_kube_namespace }} annotate service vsystem-ext service.alpha.kubernetes.io/app-protocols='{\"vsystem-ext\":\"HTTPS\"}'"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  when: expose_vsystem == "yes"

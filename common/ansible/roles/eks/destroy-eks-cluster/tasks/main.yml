@@ -1,0 +1,147 @@
+---
+- name: ref the eks common vars
+  include_vars:
+    file: "{{ role_path }}/../eks-vars.yml"
+  no_log: true
+
+- name: set fact for aws key
+  set_fact:
+    eks_aws_env:
+      KUBECONFIG: "{{ playbook_dir }}/KUBECONFIG"
+
+- include_role:
+    name: create-kops-cluster
+    tasks_from: set-aws-configuration
+  vars:
+    kops_aws_region: "{{ eks_aws_region }}"
+
+- name: get recordset from route53
+  route53:
+    command: get
+    zone: "{{ eks_dns_zone }}"
+    record: "{{ eks_k8s_cluster_name }}-eks.infra.{{ eks_dns_zone }}"
+    type: CNAME
+  register: result_recordset_ingress
+  environment:
+    "{{ eks_aws_env }}"
+  ignore_errors: yes
+
+- debug:
+    var: result_recordset_ingress
+
+- name: delete recordset
+  route53:
+    command: delete
+    zone: "{{ eks_dns_zone }}"
+    record: "{{ result_recordset_ingress.set.record }}"
+    ttl: "{{ result_recordset_ingress.set.ttl }}"
+    type: "{{ result_recordset_ingress.set.type }}"
+    value: "{{ result_recordset_ingress.set.value }}"
+  environment:
+    "{{ eks_aws_env }}"
+  when: result_recordset_ingress.set.record is defined
+
+- name: get all ingress info at k8s cluster
+  shell: "kubectl get ing --all-namespaces -o json |jq '.items'"
+  register: all_ing_info
+  environment:
+    "{{ eks_aws_env }}"
+
+- name: get node instance info
+  shell: kubectl get node -o json |jq '.items'
+  register: result_node_info
+  environment:
+    "{{ eks_aws_env }}"
+
+- block:
+  - name: set fact for all instance into
+    set_fact:
+      all_nodes: "{{ (result_node_info.stdout | from_json) | list }}"
+
+  - name: set ebs delete on termination at node instance
+    include_role:
+      name: aws-ebs-delete-on-termination
+    environment:
+      "{{ eks_aws_env }}"
+    vars:
+      aws_ec2_instance_id: "{{ node_item.spec.externalID }}"
+      flag_value: "true"
+      aws_region: "{{ eks_aws_region }}"
+    with_items: "{{ all_nodes }}"
+    loop_control:
+      loop_var: node_item
+  when: result_node_info.rc == 0 and result_node_info.stdout !=""
+
+- block:
+  - name: set fact for all ingress info
+    set_fact:
+      all_ing: "{{ (all_ing_info.stdout | from_json) | list }}"
+
+  - debug:
+      msg: "all_ing: {{ all_ing }}"
+
+  - include: eks_delete_ing.yml ing_info={{ item }}
+    with_items: "{{ all_ing }}"
+  when: all_ing_info.rc == 0 and all_ing_info.stdout != ""
+
+- name: get all svc info at k8s cluster
+  shell: "kubectl get svc --all-namespaces -o json |jq '.items'"
+  register: all_svc_info
+  environment:
+    "{{ eks_aws_env }}"
+
+- block:
+  - name: set fact for all svc info
+    set_fact:
+      all_svc: "{{ (all_svc_info.stdout | from_json) | list }}"
+
+  - debug:
+      msg: "all_svc: {{ all_svc }}"
+
+  - include: eks_delete_svc.yml svc_info={{ item }}
+    with_items: "{{ all_svc }}"
+  when: all_svc_info.rc == 0 and all_svc_info.stdout != ""
+
+- name: delete eks cluster
+  shell: "aws eks delete-cluster --name {{ eks_k8s_cluster_name }} --region {{ eks_aws_region }}"
+  environment:
+    "{{ eks_aws_env }}"
+
+- name: delete eks cluster work node stack 
+  shell: "aws cloudformation delete-stack --stack-name {{ eks_k8s_cluster_name }}-WORKER-NODES --region {{ eks_aws_region }}"
+  environment:
+    "{{ eks_aws_env }}"
+
+- name: set aws configuration
+  shell: "{{role_path}}/../../common-roles/delete-s3-bucket-folder/files/aws-set-config.sh {{ aws_access_key }} {{ aws_secret_key }} {{ eks_aws_region }}"
+  no_log: true
+
+- include_role:
+    name: delete-s3-bucket-folder
+  vars:
+    s3_bucket_name: "{{eks_aws_s3_bucket_name}}"
+    folder_name: "{{eks_k8s_cluster_name}}"
+  ignore_errors: yes
+
+- name: get all elb for this cluster
+  shell: aws elb describe-tags --load-balancer-names $(aws elb describe-load-balancers |jq '.LoadBalancerDescriptions[].LoadBalancerName'|sed 's/"//g'|tr '\r\n' ' ') |jq '.TagDescriptions[]|select (.Tags[1].Key=="kubernetes.io/cluster/{{ eks_k8s_cluster_name }}" and .Tags[1].Value=="owned").LoadBalancerName' |sed 's/"//g'|tr '\r\n' ' '|sed 's/"//g'
+  register: all_elb
+  environment:
+    "{{ eks_aws_env }}"
+
+- block:
+  - name: set fact for elb list
+    set_fact:
+      all_elb_list: "{{ (all_elb.stdout | regex_replace(' $', '')).split(' ') }}"
+
+  - debug:
+      msg: "all elb list : {{ all_elb_list }}"
+
+  
+  - name: delete all elb for this cluster
+    shell: "aws elb delete-load-balancer --load-balancer-name {{ item }}"
+    environment:
+      "{{ eks_aws_env }}"
+    with_items: "{{ all_elb_list }}"
+
+  when: all_elb.rc == 0 and all_elb.stdout != ""

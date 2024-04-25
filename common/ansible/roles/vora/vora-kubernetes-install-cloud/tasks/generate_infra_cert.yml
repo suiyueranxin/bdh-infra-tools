@@ -1,0 +1,30 @@
+- name: Copy ca-signed certificate generation script
+  copy:
+    src: generate_cert.sh
+    dest: "{{ installer_path }}"
+    mode: 0755
+
+- name: Copy client certificate
+  copy:
+    src: key.pem
+    dest: "{{ installer_path }}"
+    mode: 0555
+
+- name: Copy CA certificate chain
+  copy:
+    src: crt.pem
+    dest: "{{ installer_path }}"
+    mode: 0555
+
+- name: Generate ca-signed certifcate
+  shell: "./generate_cert.sh"
+  args:
+    chdir: "{{ installer_path }}"
+
+- name: Adapt installer flags for newest
+  set_fact:
+    cert_args: "--provide-certs \
+        -e=vora-context.Vora_Default_TLS_Configuration.default.path_cert_chain={{ installer_path }}/deployment/certs/vora.conf.secop.tlsconfig.truststore \
+        -e=vora-context.Vora_Default_TLS_Configuration.default.path_key_store={{ installer_path }}/deployment/certs/vora.conf.secop.tlsconfig.keystore \
+        -e=vora-context.Vora_JWT_Issuer.default.path_cert_chain={{ installer_path }}/deployment/certs/vora.conf.secop.jwtiss.truststore \
+        -e=vora-context.Vora_JWT_Issuer.default.path_key_store={{ installer_path }}/deployment/certs/vora.conf.secop.jwtiss.keystore"

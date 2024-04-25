@@ -1,0 +1,26 @@
+{
+    "name": "handle_feature_toggle",
+    "type": "docker-image",
+    "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/handle_feature_toggle:0.2",
+    "repository": {
+        "full_history": true
+    },
+    "resources": {
+        "limits": {
+            "cpu": 2,
+            "memory": 4096
+        }
+    },
+    "environment": {
+        "PARENT_INSTALL_JOB": "install_"
+    },
+    "depends_on": [
+        {
+            "job": "install_",
+            "on": [
+                "finished"
+            ]
+        }
+    ],
+    "build_context": "/data/repo/bdh-infra-tools"
+}

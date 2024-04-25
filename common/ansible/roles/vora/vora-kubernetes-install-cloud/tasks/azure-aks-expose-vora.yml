@@ -1,0 +1,286 @@
+- name: deploy the ngnix controller
+  shell: "kubectl create -f {{ role_path }}/files/aks_nginx.yaml  --validate=false"
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+
+- name: Just waiting 180 seconds
+  shell: "sleep 180"
+  tags:
+    - install
+
+- name: wait ngnix controller pods is ready
+  shell: "kubectl get pod -n ingress-nginx|grep -v Completed|grep -v Running |grep -v NAME|wc -l"
+  register: not_ready_pods_cnt
+  until: not_ready_pods_cnt == 0
+  retries: 10
+  delay: 30
+  ignore_errors: yes
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+    - update
+
+- name: get ngnix controller pod
+  shell: "kubectl get pod -n ingress-nginx"
+  ignore_errors: yes
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+    - update
+
+- name: wait ngnix controller svc is ready
+  shell: "kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+  register: controller_pub_ip
+  until: controller_pub_ip.stdout != ''
+  retries: 80 #Wait for 20 minutes max
+  delay: 15
+  ignore_errors: yes
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+    - update
+
+- name: get ngnix controller svc
+  shell: "kubectl get svc -n ingress-nginx"
+  ignore_errors: yes
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+    - update
+
+
+- name: copy vsystem ssl crt.pem from repo
+  stat:
+    path: "{{ role_path }}/files/tmp/crt.pem"
+  tags:
+    - install
+  register: stat_crt_result
+  
+- name: copy vsystem ssl key.pem from repo
+  stat:
+    path: "{{ role_path }}/files/tmp/key.pem"
+  tags:
+    - install
+  register: stat_key_result
+
+- name: if ssl files exist already
+  shell: "kubectl -n {{ vora_kube_namespace }} create secret tls vsystem-tls-certs --key {{ role_path }}/files/tmp/key.pem --cert {{ role_path }}/files/tmp/crt.pem"
+  environment:
+    "{{ installer_env }}"
+  ignore_errors: yes
+  tags:
+    - install
+  when: stat_crt_result.stat.exists == True and stat_key_result.stat.exists == True
+
+- name: deploy vsystem ingress secret
+  shell: "kubectl -n {{ vora_kube_namespace }} create secret tls vsystem-tls-certs --key {{ role_path }}/files/key.pem --cert {{ role_path }}/files/crt.pem"
+  register: secret_status
+  until: secret_status.rc == 0
+  retries: 3 # Wait for 6 minutes in 3 times reties
+  delay: 120
+  ignore_errors: yes
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+  when: stat_crt_result.stat.exists == False or stat_key_result.stat.exists == False
+
+- name: generate the aks_ingress.yaml to tmp dir
+  template:
+    src: aks_ingress.yaml.j2
+    dest: "{{ installer_workspace }}/aks_ingress.yaml"
+  tags:
+    - install
+
+- name: display vsystem ingress
+  shell: "cat {{ installer_workspace }}/aks_ingress.yaml"
+  environment:
+    "{{ installer_env }}"
+  ignore_errors: yes
+  tags:
+    - install
+    - rescue
+
+- name: deploy the vsystem ingress
+  shell: "kubectl create -n {{ vora_kube_namespace }} -f {{ installer_workspace }}/aks_ingress.yaml"
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+
+- name: wait vsystem ingress is ready
+  shell: "kubectl get ingress vsystem --namespace={{ vora_kube_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+  register: pub_ip
+  until: pub_ip.stdout != ''
+  retries: 30 #Wait for 9 minutes max
+  delay: 15
+  ignore_errors: yes
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - install
+    - update
+
+- name: set fact for dns
+  set_fact:
+    dns_record: "{{aks_cluster_name | replace('_', '-') }}-aks.{{dns_suffix}}"
+    dns_value: "{{pub_ip.stdout}}"
+  tags:
+    - install
+    - update
+
+- name: create dns record
+  import_role:
+    name: route53-create
+  tags:
+    - install
+
+- name: set vsystem entrypoint
+  set_fact:
+    vsystem_entry: "https://{{dns_record}}:443"
+  tags:
+    - install
+    - update
+
+- name: save public ip to install log
+  shell: "echo 'Please access vsystem by {{vsystem_entry}}' >> {{ playbook_dir }}/vora_installation.log"
+  tags:
+    - install
+    - update
+
+- name: show vsystem entry
+  debug:
+    msg: "vsystem entrypoint: {{vsystem_entry}}"
+  tags:
+    - install
+    - update
+
+- name: show vsystem load balance ip
+  debug:
+    msg: "vsystem load balance ip: {{dns_value}}"
+  tags:
+    - install
+    - update
+#expose vsystem ingress
+- block:
+  - name: expose vsystem node port
+    shell: "kubectl -n {{ vora_kube_namespace }} expose service vsystem --type NodePort --name=vsystem-ext"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: patch vsystem-ext service
+    shell: "kubectl -n {{ vora_kube_namespace }} patch service vsystem-ext -p '{\"spec\": {\"ports\" : [{\"name\": \"vsystem-ext\", \"port\" : 8797}]}}'"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: patch vsystem-ext service
+    shell: "kubectl -n {{ vora_kube_namespace }} annotate service vsystem-ext service.beta.kubernetes.io/app-protocols='{\"vsystem-ext\":\"HTTPS\"}'"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  when: expose_vsystem == "yes"
+
+# expose tx-coordinator
+- block:
+  - name: expose vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-tx-coordinator-ext --type LoadBalancer --name=tx-coordinator-service-ext --labels='datahub.sap.com/app=vora'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_txc_result.stdout}}"
+    tags:
+      - install
+
+  - name: get lb external IP as txn-coordinator IP
+    shell: "kubectl get svc tx-coordinator-service-ext --namespace={{vora_kube_namespace}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+    environment:
+      "{{ installer_env }}"
+    register: expose_txc_ip_result
+    ignore_errors: yes
+    until: expose_txc_ip_result.stdout != ''
+    retries: 10 #Wait for 5 minutes max
+    delay: 30
+    tags:
+      - install
+
+  - name: get port as txn-coordinator port
+    shell: "kubectl get svc tx-coordinator-service-ext --namespace={{vora_kube_namespace}} -o jsonpath='{.spec.ports[0].targetPort}'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_txc_port_result
+    tags:
+      - install
+
+  - name: set fact for txn-coordinator entrypoint
+    set_fact:
+      txn_coordinator_entry: "{{expose_txc_ip_result.stdout}}:{{expose_txc_port_result.stdout}}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  when: expose_vora_txc == "yes"
+
+# expose text-analysis
+- block:
+  - name: expose text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-textanalysis --type LoadBalancer --name=text-analysis-service-ext"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_text_analysis_result.stdout}}"
+    tags:
+      - install
+
+  - name: get lb external IP as text-analysis-service-ext IP
+    shell: "kubectl get svc text-analysis-service-ext --namespace={{vora_kube_namespace}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_ip_result
+    until: expose_text_ip_result.stdout != ''
+    retries: 10 #Wait for 5 minutes max
+    delay: 30
+    tags:
+      - install
+
+  - name: get node port as text-analysis port
+    shell: "kubectl get svc text-analysis-service-ext --namespace={{vora_kube_namespace}} -o jsonpath='{.spec.ports[0].targetPort}'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_port_result
+    tags:
+      - install
+
+  - name: set fact for text-analysis entrypoint
+    set_fact:
+      text_analysis_entry: "{{expose_text_ip_result.stdout}}:{{expose_text_port_result.stdout}}"
+    ignore_errors: yes
+    tags:
+      - install
+
+
+  when: expose_text_analysis == "yes"

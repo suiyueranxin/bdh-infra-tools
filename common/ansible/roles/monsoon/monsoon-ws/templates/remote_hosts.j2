@@ -1,0 +1,22 @@
+[workstation]
+{% for item in ws_instance %}
+{{ item.public_dns_name }}
+{% endfor %}
+
+[nodes:children]
+masters
+workers
+
+[masters]
+master.ansible ansible_connection=docker ansible_user=root
+
+[workers:children]
+just_workers
+jumpbox
+
+[just_workers]
+worker1.ansible ansible_connection=docker ansible_user=root
+worker2.ansible ansible_connection=docker ansible_user=root
+
+[jumpbox]
+jumpbox.ansible ansible_connection=docker ansible_user=root

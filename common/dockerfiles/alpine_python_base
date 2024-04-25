@@ -1,0 +1,4 @@
+FROM alpine:3.7
+
+RUN apk add --no-cache --update curl python2 py-pip jq git bash openssh-client py-yaml> /dev/null && pip install --upgrade pip requests timeout-decorator > /dev/null
+RUN rm -rf /root/.cache/pip/*

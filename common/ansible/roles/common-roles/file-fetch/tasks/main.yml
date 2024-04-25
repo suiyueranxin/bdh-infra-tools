@@ -1,0 +1,3 @@
+- name: Fetch file
+  fetch: src={{ item.path }} dest={{ item.local_path }} fail_on_missing=yes
+  with_items: "{{ files }}"

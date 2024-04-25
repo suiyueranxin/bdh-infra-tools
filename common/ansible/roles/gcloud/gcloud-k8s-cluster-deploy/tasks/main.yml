@@ -1,0 +1,86 @@
+---
+- name: ref the gcloud common vars
+  include_vars:
+    file: "{{ role_path }}/../gcloud-vars.yml"
+
+- name: Set google cloud Service Account environment
+  set_fact:
+    gcloud_service_account_credentials: "{{ lookup('file',google_application_credentials) | from_json }}"
+  no_log: true
+
+- name: Set google cloud Service Account credentials json
+  set_fact:
+    gcloud_env:
+      GOOGLE_APPLICATION_CREDENTIALS: "{{ google_application_credentials }}"
+  no_log: true
+
+- name: deploy k8s cluster at gcloud
+  gcloud:
+    k8s_cluster_project_id: "{{ gcloud_service_account_credentials.project_id }}"
+    k8s_cluster_zone: "{{ gcloud_zone }}"
+    k8s_cluster_name: "{{ gcloud_k8s_cluster_name }}"
+    k8s_cluster_vpc: "{{ gcloud_k8s_vpc }}"
+    k8s_cluster_svc_ip_range_cidr_suffix: "{{ gcloud_k8s_svc_ip_range_cidr_suffix }}"
+    request_type: create
+    k8s_cluster_version: "{{ k8s_version }}"
+    k8s_cluster_node_num: "{{ number_of_workers }}"
+    k8s_cluster_node_machine_type: "{{ gcloud_k8s_cluster_node_machine_type }}"
+    k8s_cluster_node_image_type: "{{ gcloud_k8s_cluster_node_image_type }}"
+    k8s_cluster_node_disk_size: "{{ gcloud_k8s_cluster_node_disk_size }}"
+  environment:
+    "{{ gcloud_env }}"
+
+- name: waiting util cluster is ready
+  gcloud:
+    k8s_cluster_project_id: "{{ gcloud_service_account_credentials.project_id }}"
+    k8s_cluster_zone: "{{ gcloud_zone }}"
+    k8s_cluster_name: "{{ gcloud_k8s_cluster_name }}"
+    request_type: state
+  register: status
+  until: status.response.status == 2 # 1:PROVISIONING 2:RUNNING 4:STOPPING
+  retries: 120 # Wait for 30 minutes max
+  delay: 15
+  ignore_errors: yes
+  environment:
+    "{{ gcloud_env }}"
+
+- fail:
+    msg: "create gke cluster failed, the detail is: {{status.response}}"
+  when: status.response.status != 2
+
+- name: set node auto-upgrade as false for node pool management
+  set_fact:
+    gcloud_k8s_node_pool_mng:
+      auto_upgrade: False
+
+- name: set node auto-upgrade as True for node pool management
+  set_fact:
+    gcloud_k8s_node_pool_mng:
+      auto_upgrade: True
+  when: gcloud_k8s_node_pool_auto_upgrade is defined and gcloud_k8s_node_pool_auto_upgrade == "yes"
+
+- name: set k8s cluster node pool management at gcloud
+  gcloud:
+    k8s_cluster_project_id: "{{ gcloud_service_account_credentials.project_id }}"
+    k8s_cluster_zone: "{{ gcloud_zone }}"
+    k8s_cluster_name: "{{ gcloud_k8s_cluster_name }}"
+    request_type: set_np_mng
+    k8s_cluster_node_pool_management: "{{ gcloud_k8s_node_pool_mng }}"
+  environment:
+    "{{ gcloud_env }}"
+
+- name: fetch k8s cluster admin config file
+  gcloud:
+    k8s_cluster_project_id: "{{ gcloud_service_account_credentials.project_id }}"
+    k8s_cluster_zone: "{{ gcloud_zone }}"
+    k8s_cluster_name: "{{ gcloud_k8s_cluster_name }}"
+    request_type: getconf
+    k8s_cluster_admcfg_local_path: "KUBECONFIG"
+  environment:
+    "{{ gcloud_env }}"
+
+- name: add user role-binding with user's email address
+  shell: "kubectl create clusterrolebinding creator-email-admin --clusterrole=cluster-admin --user={{ user_email }}"
+  environment:
+    KUBECONFIG: "{{ playbook_dir }}/KUBECONFIG"
+  when: user_email is defined and user_email != ""

@@ -1,0 +1,4 @@
+ownership_rules:
+  directory_matching_rules:
+    - name: test
+      path: test_bot.txt

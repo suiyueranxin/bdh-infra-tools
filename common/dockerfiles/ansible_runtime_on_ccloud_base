@@ -1,0 +1,20 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ansible-runtime-base:ansible4.0.0
+
+ARG KUBECTL_CLI_VERSION=1.20.9
+
+RUN apt-get update && apt-get install -y ftp libffi-dev
+RUN pip install --no-cache-dir pyopenssl && \
+    pip install --no-cache-dir ndg-httpsclient && \ 
+    pip install --no-cache-dir pyasn1
+
+ENV PATH=$PATH:$HONE/.local/bin/
+
+# Install kubectl
+RUN curl -Lo /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v$KUBECTL_CLI_VERSION/bin/linux/amd64/kubectl
+RUN chmod +x /usr/local/bin/kubectl
+RUN kubectl
+
+# Install minio client
+RUN curl -Lo /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc
+RUN chmod +x  /tmp/mc && sudo mv /tmp/mc /usr/local/bin/
+

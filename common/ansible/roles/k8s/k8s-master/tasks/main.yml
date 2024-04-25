@@ -1,0 +1,148 @@
+---
+# clean the old data if kubenetes has exist
+- name: get all nodes if old kubenetes exists
+  shell: kubectl get nodes | awk '{print $1}'
+  register: result_get_nodes
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  ignore_errors: true
+
+- name: drain all the pods if exist
+  shell: kubectl drain {{ item }} --delete-local-data --force --ignore-daemonsets
+  with_items: "{{ result_get_nodes.stdout.split('\n')[1:] }}"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  ignore_errors: true
+
+- name: delete all the nodes if exist
+  shell: kubectl delete node {{ item }}
+  with_items: "{{ result_get_nodes.stdout.split('\n')[1:] }}"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  ignore_errors: true
+
+# start to reset
+- name: reset everything
+  shell: kubeadm reset
+
+- name: set fact for kubeadm init comand
+  set_fact:
+    init_command: "kubeadm init --service-cidr=172.1.0.0/16 --pod-network-cidr={{ kubernetes_pod_ip_range }} --kubernetes-version {{ kubernetes_version }}"
+
+- name: set fact for kubeadm init command when at ccloud
+  set_fact:
+    init_command: "kubeadm init --service-cidr=172.1.0.0/16 --pod-network-cidr={{ kubernetes_pod_ip_range }} --kubernetes-version {{ kubernetes_version }} --apiserver-cert-extra-sans {{ hostvars[groups['masters'][0]].external_ip }}"
+  when: ansible_user == "ccloud"
+
+- name: kubeadm init
+  shell: "{{ init_command }}"
+  register: result_init
+
+- debug:
+    var: result_init
+
+- name: set kubeconfig
+  copy:
+    remote_src: yes
+    src: /etc/kubernetes/admin.conf
+    dest: $HOME/admin.conf
+
+- name: set kubeconfig for external at ccloud
+  copy:
+    remote_src: yes
+    src: /etc/kubernetes/admin.conf
+    dest: $HOME/admin.conf.external
+  when: ansible_user == "ccloud"
+
+- name: update api server ip with external IP at ccloud
+  replace:
+    path: $HOME/admin.conf.external
+    regexp: "{{ ansible_default_ipv4.address }}"
+    replace: "{{ hostvars[groups['masters'][0]].external_ip }}"
+  when: ansible_user == "ccloud"
+
+- name: set fact for download kubeconfig file
+  set_fact:
+    kubeconfig: "/etc/kubernetes/admin.conf"
+
+- name: set fact for download kubeconfig file
+  set_fact:
+    kubeconfig: "$HOME/admin.conf.external"
+  when: ansible_user == "ccloud"
+
+- name: download kubeconfig to local directory
+  fetch:
+    src: "{{ kubeconfig }}"
+    dest: KUBECONFIG
+    flat: yes
+
+- name: overwrite http_proxy in /etc/kubernetes/manifests/kube-apiserver.yaml
+  replace:
+    dest: /etc/kubernetes/manifests/kube-apiserver.yaml
+    regexp: 'name: http_proxy'
+    replace: 'name: xx_http_proxy'
+
+- name: overwrite https_proxy in /etc/kubernetes/manifests/kube-apiserver.yaml
+  replace:
+    dest: /etc/kubernetes/manifests/kube-apiserver.yaml
+    regexp: 'name: https_proxy'
+    replace: 'name: xx_https_proxy'
+
+- name: restart kubelet service
+  service:
+    name: kubelet
+    state: restarted
+
+- name: waiting 300 seconds for API server back
+  wait_for:
+    port: 6443
+    delay: 10
+    timeout: 300
+    msg: timeout when waiting for API server back
+
+- name: deploy weave network
+  shell: kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')&env.IPALLOC_RANGE={{ kubernetes_pod_ip_range }}"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: task_result
+  until: task_result.rc == 0
+  retries: 3
+  delay: 10
+  when: kubernetes_deploy_weave
+
+- name: waiting 300 seconds for API server back
+  wait_for:
+    port: 6443
+    delay: 10
+    timeout: 300
+    msg: timeout when waiting for API server back
+
+- name: Copy dashboard deployment yaml file
+  copy: src=dashboard.yaml dest=/tmp/dashboard.yaml
+
+- name: deploy dashboard
+  shell: kubectl create -f /tmp/dashboard.yaml --validate=false
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: deploy helm
+  shell: curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > helm_install.sh && chmod +x helm_install.sh && ./helm_install.sh --version {{ helm_version }}
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: waiting 300 seconds for API server back
+  wait_for:
+    port: 6443
+    delay: 10
+    timeout: 300
+    msg: timeout when waiting for API server back
+
+- name: deploy SA and SA-rolebinding for tiller
+  shell: kubectl -n kube-system create sa tiller; kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller; 
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: helm init with SA tiller
+  shell: helm init --service-account tiller
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf

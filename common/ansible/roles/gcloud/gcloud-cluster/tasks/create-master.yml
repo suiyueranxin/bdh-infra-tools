@@ -1,0 +1,36 @@
+---
+- name: Create a external IP address for master use
+  gce_eip:
+    service_account_email: "{{ gcloud_service_account_credentials.client_email }}"
+    credentials_file: "{{ google_application_credentials }}"
+    project_id: "{{ gcloud_project_id }}"
+    name: "{{ gcloud_instance_master_external_ip }}"
+    region: "{{ gcloud_region }}"
+    state: present
+
+- name: Create master machines on Google cloud
+  gce:
+    credentials_file: "{{google_application_credentials}}"
+    service_account_email: "{{ gcloud_service_account_credentials.client_email }}"
+    project_id: "{{ gcloud_project_id }}"
+    zone: "{{ gcloud_zone }}"
+    instance_names: "{{ gcloud_instance_master_name }}"
+    machine_type: "{{ gcloud_instance_machine_type }}"
+    image_family: "{{ gcloud_image_family }}"
+    image: "{{ gcloud_instance_image_type }}"
+    disk_size: "{{ gcloud_instance_disk_size }}"
+    persistent_boot_disk: True
+    external_ip: "{{ gcloud_instance_master_external_ip }}"
+    ip_forward: True
+    state: present
+    metadata : '{ "ssh-key" : "{{ ssh_pubkey }}" }'
+    service_account_permissions: "{{ gcloud_instance_sa_permissions }}"
+    tags: "{{ gcloud_instance_tags }}"
+  register: created_masters
+
+- name: Set create_masters as fact for inventory file template
+  set_fact:
+    master_instances: "{{ created_masters.instance_data }}"
+
+- name: Debug master_instances
+  debug: var=master_instances

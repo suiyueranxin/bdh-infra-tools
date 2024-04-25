@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: vsystem
+    annotations:
+        kubernetes.io/ingress.class: "nginx"
+        kubernetes.io/tls-acme: "true"
+        ingress.kubernetes.io/force-ssl-redirect: "true"
+        ingress.kubernetes.io/secure-backends: "true"
+        nginx.ingress.kubernetes.io/proxy-body-size: 500m
+        ingress.kubernetes.io/proxy-body-size: 500m
+        nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+spec:
+    rules:
+    -
+        host: {{ kops_k8s_cluster_name }}-kops.infra.{{ kops_dns_zone }}
+        http:
+            paths:
+            -
+                path: /
+                pathType: Prefix
+                backend:
+                    service:
+                        name: vsystem
+                        port:
+                            number: 8797
+
+    tls:
+        - hosts:
+            - {{ kops_k8s_cluster_name }}-kops.infra.{{ kops_dns_zone }}
+          secretName: vsystem-tls-certs
+

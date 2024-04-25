@@ -1,0 +1,8 @@
+FROM ubuntu:17.10
+
+RUN apt-get update && apt-get -y install git curl wget tar python2.7 python-pip python-yaml > /dev/null && pip install -U pytest requests > /dev/null
+RUN pip install --upgrade setuptools && \
+    pip install urllib3==1.25.3 && \
+    pip install kubernetes==10.0.1 && \
+    pip install requests==2.22.0 > /dev/null
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.8.0/bin/linux/amd64/kubectl && chmod +x kubectl && cp kubectl /bin/kubectl

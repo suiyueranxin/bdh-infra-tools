@@ -1,0 +1,35 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+workers
+
+[workers:children]
+just_workers
+jumpbox
+
+[masters]
+{% for item in master_instances %}
+{{ item.private_ip }} instance_name={{item.name}} zone={{item.zone}} project_id={{gcloud_project_id}} external_ip_region={{gcloud_region}} external_ip_name={{gcloud_instance_master_external_ip}} ansible_user={{ gcloud_ssh_user }} ansible_become=True ansible_become_user=root ansible_become_method=sudo
+{% endfor %}
+
+
+[just_workers]
+{% for item in worker_instances %}
+{% if not loop.first %}
+{{ item.instance_data[0].private_ip }} instance_name={{item.instance_data[0].name}} zone={{item.instance_data[0].zone}} project_id={{gcloud_project_id}} ansible_user={{ gcloud_ssh_user }} ansible_become=True ansible_become_user=root ansible_become_method=sudo
+{% endif %}
+{% endfor %}
+
+[jumpbox]
+{% if worker_instances|length > 0 %}
+{{ worker_instances[0].instance_data[0].private_ip }} instance_name={{worker_instances[0].instance_data[0].name}} zone={{worker_instances[0].instance_data[0].zone}} ansible_user={{ gcloud_ssh_user }} ansible_become=True ansible_become_user=root ansible_become_method=sudo
+{% endif %}
+
+[all:vars]
+cluster_provider=gcloud
+ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no -o ServerAliveInterval=600 {{ gcloud_ssh_user }}@{{ master_instances[0].public_ip }}"'
+
+[masters:vars]
+external_recordset={{ master_instances[0].public_ip }}

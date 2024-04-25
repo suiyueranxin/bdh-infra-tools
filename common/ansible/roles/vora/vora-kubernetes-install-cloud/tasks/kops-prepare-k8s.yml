@@ -1,0 +1,97 @@
+---
+- name: get kubeconfig file for update
+  shell: "kops export kubecfg {{ kops_k8s_cluster_name }}.{{ kops_dns_zone }} --state=s3://{{kops_k8s_cluster_name}}"
+  tags:
+      - update
+
+- name: copy kubeconfig to playbook dir
+  copy:
+    src: "/root/.kube/config"
+    dest: "{{ playbook_dir }}/../cloud/kops/KUBECONFIG"
+  tags:
+      - update
+
+#helm init & helm mapconfig check/workaround
+- block:
+  - name: create service account
+    shell: "kubectl create serviceaccount --namespace kube-system tiller"
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: create role binding
+    shell: "kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller --namespace kube-system"
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: helm init first to create service
+    shell: "helm init"
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    tags:
+      - install
+
+  - name: patch deploy
+    shell: "kubectl patch deploy --namespace kube-system tiller-deploy -p '{\"spec\":{\"template\":{\"spec\":{\"serviceAccount\":\"tiller\"}}}}'"
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: wait for the tiller-deploy
+    shell: "kubectl get pod --namespace kube-system | grep tiller-deploy | awk '{print $3}'"
+    register: result_tiller_deploy
+    until: result_tiller_deploy.stdout == "Running"
+    retries: 10 # Wait for 10 minutes max
+    delay: 60
+    tags:
+      - install
+      - update
+
+  - name: helm init
+    shell: "helm init --upgrade"
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    tags:
+      - install
+      - update
+
+  - name: helm version check
+    shell: helm version
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    tags:
+      - install
+      - update
+
+#fix some installation issues
+- name: create cluster role binding for kube-system:default
+  shell: "kubectl create clusterrolebinding kube-system-default --clusterrole=cluster-admin --serviceaccount=kube-system:default"
+  environment:
+    KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+    - install
+
+- name: create cluster role binding for {{vora_kube_namespace}}:default
+  shell: "kubectl create clusterrolebinding {{ vora_kube_namespace }}-default --clusterrole=cluster-admin --serviceaccount=\"{{ vora_kube_namespace }}\":default"
+  environment:
+    KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+    - install
+
+- name: create cluster role binding for {{vora_kube_namespace}}:vora-k8s-dqp
+  shell: "kubectl create clusterrolebinding {{ vora_kube_namespace }}-vora-k8s-dqp --clusterrole=cluster-admin --serviceaccount=\"{{ vora_kube_namespace }}\":vora-k8s-dqp"
+  environment:
+    KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+    - install
+

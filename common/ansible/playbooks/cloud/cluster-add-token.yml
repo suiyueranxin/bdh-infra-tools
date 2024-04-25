@@ -1,0 +1,23 @@
+---
+- hosts: workstation
+  tasks:
+    - name: create token string
+      instance_token:
+        request_type: "encode"
+        key_string: "SapVorainfraTeam"
+        request_user_email: "{{ user_email }}"
+        request_project: "{{ project_name }}"
+        request_period: "{{ period }}"
+        request_description: "{{ description }}"
+      register: result
+    - name: set fact for token string
+      set_fact:
+        tk_str: "{{ result.response }}"
+    - name: debug for display token string
+      debug:
+        msg: "{{ tk_str }}"
+
+- hosts: nodes
+  roles:
+    - role: deploy-token
+      token_str: "{{ hostvars[groups['workstation'][0]]['tk_str'] }}"

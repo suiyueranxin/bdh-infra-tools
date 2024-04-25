@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: report-elastic-ip
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: report-elastic-ip
+  template:
+    metadata:
+      labels:
+        name: report-elastic-ip
+    spec:
+      containers:
+      - name: report-elastic-ip
+        image: docker.io/twinklexing/sh_curl_lambda:v1.2
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 100
+        env:
+        - name: XAPIKEY
+          value: "bwgeKHgDZBaBdyxOASZoa56Pfe0I2acp2RG7csDN"
+        - name: REQUESTURL
+          value: "https://gg0fpsneoh.execute-api.us-west-2.amazonaws.com/sg_rule_mng/save_node_info_to_s3"
+        - name: DATA_SOURCES  #can be a string including the key words: hdfs, kerberos, bw
+          value: "hdfs, azure_sqldb, redshift"

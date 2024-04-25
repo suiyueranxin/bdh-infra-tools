@@ -1,0 +1,24 @@
+---
+- name: copy ca.crt into /tmp
+  copy:
+    src: ca.crt
+    dest: "/tmp/docker_ssl_ca.crt"
+    backup: yes
+  delegate_to: localhost
+  tags:
+    - install
+
+- name: copy vctl from {{ hostvars[groups['masters'][0]]['ansible_fqdn'] }} to localhost:/tmp 
+  shell: "scp -o \"StrictHostKeyChecking no\" -i {{ playbook_dir }}/../../id_rsa root@{{ hostvars[groups['masters'][0]]['ansible_fqdn'] }}:{{ installer_path }}/tools/vctl /tmp/vctl"
+  delegate_to: localhost
+  tags:
+    - install
+
+- name: Import docker registry ssl client certificate file to default tenant
+  shell: "{{ role_path }}/files/vctl_import_ca.sh {{ vsystem_entry }} default {{ vora_username }} {{ vora_password }} '/tmp/docker_ssl_ca.crt'"
+  args:
+    chdir: "/tmp"
+    executable: /bin/bash
+  delegate_to: localhost
+  tags:
+    - install

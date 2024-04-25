@@ -1,0 +1,62 @@
+---
+#gcloud container registry direct access
+- block:
+  - name: execute google container registry direct access
+    shell: "{{ role_path }}/files/gke_container_registry.sh {{ google_application_credentials }} {{ gcloud_project_id }}"
+    register: result_container_registry
+
+  - debug:
+      msg: "The result of execute google container registry direct access is: {{ result_container_registry.stdout }} {{ result_container_registry.stderr }}"
+  tags:
+    - uninstall
+
+#gsutil create  bucket when user specified
+- block:
+  - name: Set fact for service account info
+    set_fact:
+      gcloud_service_account_credentials: "{{ lookup('file',google_application_credentials) | from_json }}"
+    tags:
+      - uninstall
+    no_log: true
+
+  - name: set fact for sa pk and client email
+    set_fact:
+      gcloud_service_account_pk: "{{ gcloud_service_account_credentials.private_key | regex_replace('-----BEGIN PRIVATE KEY-----\n', '') \
+                                  | regex_replace('\n-----END PRIVATE KEY-----\n', '')  \
+                                  | regex_replace('\n', ' ') }}"
+      gcloud_sa_client_email: "{{ gcloud_service_account_credentials.client_email}}"
+    tags:
+      - uninstall
+    no_log: true
+
+  - name: set fact for gcloud bucket name
+    set_fact:
+      gke_bucket_name: "{{ gcloud_k8s_cluster_name }}"
+    when: gcloud_k8s_cluster_name is defined and gcloud_k8s_cluster_name != ""
+    tags:
+      - uninstall
+
+  - name: gsutile create bucket
+    shell: "gsutil mb -p {{ gcloud_project_id }} -c {{ gke_storage_class }} -l {{ gke_bucket_location }} gs://{{gke_bucket_name}}/"
+    register: result_bucket
+    ignore_errors: true
+    tags:
+      - uninstall
+
+  - debug:
+      msg: "The result of create bucket is: {{ result_bucket.stdout }} {{ result_bucket.stderr }}"
+
+  - name: set fact for gke_gcs_url
+    set_fact:
+      gke_gcs_url: "'Iss={{ gcloud_sa_client_email }}&Key={{ gcloud_service_account_pk }}&Project={{ gcloud_project_id }}&Path={{ gke_bucket_name }}'"
+    tags:
+      - uninstall
+    no_log: true
+
+  - debug:
+      msg: "The gke gcs url is: {{ gke_gcs_url }}"
+    tags:
+      - uninstall
+    no_log: true
+  when: enable_storage_checkpoint is defined and enable_storage_checkpoint == "yes"
+

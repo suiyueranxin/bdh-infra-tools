@@ -1,0 +1,79 @@
+[workstation]
+localhost ansible_connection=local
+
+[masters]
+{% for item in master_instances %}
+{{ item.public_dns_name }}
+{% endfor %}
+
+[just_workers]
+{% for item in worker_instances %}
+{% if not loop.first %}
+{{ item.public_dns_name }}
+{% endif %}
+{% endfor %}
+
+[jumpbox]
+{{ worker_instances[0].public_dns_name }}
+
+[workers:children]
+just_workers
+jumpbox
+
+[nodes:children]
+workers
+masters
+
+[cldb:children]
+masters
+
+[zookeeper:children]
+workers
+
+[resourcemanager:children]
+masters
+
+[historyserver:children]
+masters
+
+[fileserver:children]
+nodes
+
+[thriftserver:children]
+jumpbox
+
+[workstation:vars]
+master_image=RHEL7-x86_64
+worker_image=RHEL7-x86_64
+number_of_workers=3
+
+[nodes:vars]
+use_external_spark=false
+enable_kerberos=false
+cluster_name=c0.sap.corp
+
+[fileserver:vars]
+docker_disk_file=/docker.disk
+
+[vora_manager_master:children]
+masters
+
+[vora_manager_workers:children]
+workers
+
+[mapr:children]
+workstation
+jumpbox
+nodes
+
+[mapr:vars]
+cluster_manager=mapr
+isvm=false
+
+[all:vars]
+cluster_provider=monsoon
+# general Monsoon options
+# set this to a value (in GB) other than 0 to get a volume attached on the monsoon instance.
+monsoon_volume_size=0
+# attached disk will be extended to this logical volume
+vol_to_extend=var

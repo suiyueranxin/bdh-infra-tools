@@ -1,0 +1,27 @@
+---
+- name: get the secret password
+  shell: "cat {{gardener_shoot_kubeconfig}} | grep 'password:' | awk '{print $2}'"
+  register: result_secrets
+  tags:
+    - install
+    - update
+
+- debug:
+    msg: "cluster dashboard account: admin, {{ result_secrets.stdout.strip() }}"
+  tags:
+    - install
+    - update
+
+- set_fact:
+    dashboard_password: "{{ result_secrets.stdout.strip() }}"
+  tags:
+    - install
+    - update
+
+- name: generate summary file
+  template:
+    src: gardener_aws_summary.j2
+    dest: "{{ playbook_dir }}/summary.log"
+  tags:
+    - install
+    - update

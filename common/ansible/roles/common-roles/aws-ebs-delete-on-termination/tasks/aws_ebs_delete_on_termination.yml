@@ -1,0 +1,11 @@
+---
+- name: set fact for cmd for aws ec2 modify-instance-attribute ebs delete on termination
+    set_fact:
+            ec2_cmd: 'aws ec2 modify-instance-attribute  --instance-id "{{ ins_id }}" --block-device-mappings  "[{\"DeviceName\": \"{{ ebs.DeviceName }}\",\"Ebs\":{\"DeleteOnTermination\":{{ flag }}}}]" --region="{{ aws_region }}"'
+
+- name: aws ec2 modify-instance-attribute ebs delete on termination
+    shell: "{{ ec2_cmd }}"
+          register: ebs_delete_on_termination_msg
+
+- debug:
+        msg: "ebs delete on termination return msg is {{ ebs_delete_on_termination_msg }}"

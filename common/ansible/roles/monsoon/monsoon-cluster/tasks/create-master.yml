@@ -1,0 +1,31 @@
+---
+- name: Create master machines on Monsoon
+  ec2:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    zone: "{{ monsoon_zone }}"
+    image: "{{ master_image }}"
+    instance_type: "{{ master_instance_type }}"
+    count: 1 # Only single master supported for now
+    wait: yes # we are going to wait for workers and also wait until ssh is ready.
+    wait_timeout: 1000
+    # in ansible 2.3 this value is not passed to boto
+    # to ignore certificate errors, you need to add this to ~/.boto or /etc/boto:
+    # https_validate_certificates = False
+    validate_certs: no
+    user_data: "#!/bin/bash\nmkdir -p /root/.ssh\ncat>>/root/.ssh/authorized_keys<<EOF\n{{ lookup('file', 'id_rsa.pub') }}\n"
+    instance_tags:
+      Name: "{{ master_name }}"
+  environment:
+    BOTO_ENDPOINTS: "{{ role_path }}/files/boto_endpoints.json"
+  register: created_masters
+
+
+- name: Set create_masters as fact for inventory file template
+  set_fact:
+    master_instances: "{{ created_masters.instances }}"
+
+- name: Debug master_instances
+  debug: var=master_instances
+

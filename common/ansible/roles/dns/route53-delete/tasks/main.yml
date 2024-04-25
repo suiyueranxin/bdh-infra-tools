@@ -1,0 +1,15 @@
+---
+- include_vars:
+    file: "{{role_path}}/../route53-vars.yml"
+
+- name: delete dns record {{dns_record}} with IM API
+  uri:
+    url: "{{route53_im_api_url}}/{{dns_record}}/{{record_type}}"
+    method: DELETE
+    return_content: yes
+    status_code: 200
+    validate_certs: no
+    force_basic_auth: yes
+    headers:
+      Authorization: bearer {{im_auth_header}}
+  ignore_errors: yes

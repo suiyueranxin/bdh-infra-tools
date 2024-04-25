@@ -1,0 +1,94 @@
+---
+- name: login az cli
+  shell: "az login --service-principal --username {{ client_id }} --password {{ client_secret }} --tenant {{ tenant }}"
+  no_log: true
+
+- name: set subscription id
+  shell: "az account set --subscription 'PI Big Data Vora (SE)'"
+
+- name: Enable aks preview
+  shell: "az provider register -n Microsoft.Network && \
+            az provider register -n Microsoft.Storage && \
+            az provider register -n Microsoft.Compute && \
+            az provider register -n Microsoft.ContainerService"
+
+- name: Lookup resource group
+  shell: "az group exists --name {{azure_resource_group}}"
+  register: rg_result
+
+- name: Create resource group
+  shell: "az group create --name {{azure_resource_group}} --location {{azure_resource_location}} --tags 'creator=sap-data-hub-infra-manager cname={{aks_cluster_name}}'"
+  when: rg_result.stdout == "false"
+
+- block:
+  - name: Lookup docker registry
+    shell: "az acr show --name {{acr_name}}"
+    register: acr_result
+    ignore_errors: yes
+
+  - name: set args for fast deploy
+    set_fact:
+      aks_fast_deploy: no
+    when: acr_result.rc != 0
+  when: aks_fast_deploy is defined and aks_fast_deploy
+
+- block:
+  - name: Lookup docker registry
+    shell: "az acr show --name {{azure_registry_name}}"
+    register: acr_result
+    ignore_errors: yes
+
+  - name: Create new docker registry
+    shell: "az acr create -g {{azure_resource_group}} --name {{azure_registry_name}} --sku {{acr_sku}} --admin-enabled"
+    when: acr_result.rc != 0
+
+  - name: azure docker registry login
+    shell: "az acr login -n {{ azure_registry_name }}"
+  when: aks_fast_deploy is undefined or not aks_fast_deploy
+
+- name: set create aks cmd
+  set_fact:
+    cmd_create_aks_cluster: "az aks create --resource-group {{azure_resource_group}} --name {{aks_cluster_name}} \
+            --node-count {{number_of_workers}} --node-vm-size {{worker_instance_type}} \
+            --kubernetes-version {{k8s_version}} \
+            --ssh-key-value={{ssh_public_key_path}} \
+            --service-principal={{client_id}} --client-secret={{client_secret}} \
+            --node-osdisk-size {{aks_node_disksize}}" \
+            --tags 'creator=sap-data-hub-infra-manager cname={{aks_cluster_name}}'"
+  no_log: true
+
+
+- name: create aks cluster
+  shell: "{{cmd_create_aks_cluster}}"
+  no_log: true
+
+- name: get aks cluster credentials
+  shell: "az aks get-credentials --resource-group {{azure_resource_group}} --name {{aks_cluster_name}} \
+          --file {{azure_kubeconfig}}"
+
+
+- name: create cluster role binding for kubernetes dashboard
+  shell: "kubectl create clusterrolebinding kubernetes-dashboard \
+               --clusterrole=cluster-admin \
+               --serviceaccount=kube-system:kubernetes-dashboard"
+  environment:
+    KUBECONFIG: "{{ azure_kubeconfig }}"
+
+- name: get cluster nodename
+  shell: "kubectl get nodes -o=jsonpath='{.items[0].metadata.name}' | \
+          awk -F '-' '{print $3}'"
+  environment:
+    KUBECONFIG: "{{ azure_kubeconfig }}"
+  register: node_pool_num
+
+- name: get cluster nodegroup
+  shell: "az aks show -g {{azure_resource_group}} --name {{aks_cluster_name}} --query 'nodeResourceGroup' | sed 's/\"//g'"
+  register: node_group
+
+- name: delete ssh rule
+  shell: "az network nsg rule delete \
+        --name allow_ssh \
+        --nsg-name aks-agentpool-{{node_pool_num.stdout}}-nsg \
+        --resource-group {{node_group.stdout}}"
+  ignore_errors: yes
+

@@ -1,0 +1,23 @@
+---
+#after the vm restart, the cloud init maybe change the hostname, so here preserve it
+- name: set hostname and preserve it
+  shell: "hostnamectl set-hostname $(hostname -s); echo \"preserve_hostname: true\" > /etc/cloud/cloud.cfg.d/99_hostname.cfg"
+
+- name: setenforce 0
+  selinux:
+    state: disabled
+
+- name: (install-k8s-redhat,yml) Copy Kubernetes repo file
+  template:
+    src: kubernetes.repo.j2
+    dest: /etc/yum.repos.d/kubernetes.repo
+
+- name: (install-k8s-redhat.yml) install k8s
+  package: name={{ item }} state=present
+  with_items:
+    - kubelet-{{kubelet_version}}
+    - kubectl-{{kubectl_version}}
+    - kubeadm-{{kubeadm_version}}
+
+
+

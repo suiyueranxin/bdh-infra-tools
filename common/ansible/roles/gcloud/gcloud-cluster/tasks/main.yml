@@ -1,0 +1,11 @@
+---
+- include: setup-common.yml
+- include: create-master.yml
+- include: create-workers.yml
+  when: gcloud_number_of_workers > 0
+- include: create-inventory-file.yml
+- include: wait-until-instances-ready-master.yml ssh_ip={{ item.public_ip }}
+  with_items: "{{ master_instances }}"
+- include: wait-until-instances-ready.yml master_external_ip={{ master_instances[0].public_ip }} ssh_ip={{ item.instance_data[0].private_ip }}
+  with_items: "{{ worker_instances }}"
+- meta: refresh_inventory

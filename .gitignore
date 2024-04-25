@@ -1,0 +1,11 @@
+*.pyc
+*.log
+*.swp
+.settings
+/.infrabox
+KUBECONFIG
+*.retry
+*.zip
+.DS_Store
+.vscode
+.idea/

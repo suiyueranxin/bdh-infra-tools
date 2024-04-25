@@ -1,0 +1,19 @@
+# master vars
+master_name: RH_master
+master_image: RHEL7-x86_64
+master_instance_type: medium_4_16
+
+# worker vars
+number_of_workers: 1
+worker_name_prefix: RH_worker_
+worker_image: RHEL7-x86_64
+worker_instance_type: medium_4_16
+
+supported_monsoon_images:
+  - UBUNTU1404-x86_64
+  - UBUNTU1604-x86_64
+  - RHEL6-x86_64
+  - RHEL7-x86_64
+  - SLES11-SP4-x86_64
+  - SLES12-SP1-x86_64
+  - SLES12-SP2-x86_64

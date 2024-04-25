@@ -1,0 +1,8 @@
+- name: generate summary file
+  template:
+    src: aks_summary.j2
+    dest: "{{ playbook_dir }}/summary.log"
+  ignore_errors: yes
+  tags:
+    - install
+    - update

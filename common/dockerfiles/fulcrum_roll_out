@@ -1,0 +1,46 @@
+FROM ubuntu:14.04
+
+ARG KUBECTL_CLI_VERSION
+ARG SCRIPT_WORKSPACE
+ARG INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME
+ARG INTERNAL_DOCKER_REGISTRY_PORT
+
+#ENV proxy=http://proxy.wdf.sap.corp:8080
+
+ENV http_proxy=http://proxy.wdf.sap.corp:8080 \
+    https_proxy=http://proxy.wdf.sap.corp:8080 \
+    no_proxy=localhost,sap.corp,mo.sap.corp,cc.mo.sap.corp,sap.biz,cloud.sap,sap,cc.ondemand.com,moo-repo,moo-repo.wdf.sap.corp,repo,repo.wdf.sap.corp,169.254.169.254,127.0.0.1
+
+RUN apt-get update && apt-get install -y ca-certificates curl git 
+#    python-dev python-pip libssl-dev openssh-client -q && \
+#    pip install --upgrade pip
+
+# Install Docker from Docker Inc. repositories.
+RUN curl -sSL https://get.docker.com/ | sh
+
+# Install node.js and npm
+#RUN apt-get install -y nodejs npm
+
+# set registry
+#RUN npm config set strict-ssl false
+
+# Install gulp
+#RUN npm install -g gulp-cli jspm --proxy=http://proxy.wdf.sap.corp:8080/
+
+# Install kubectl
+RUN curl -Lo /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v$KUBECTL_CLI_VERSION/bin/linux/amd64/kubectl
+RUN chmod +x /usr/local/bin/kubectl
+
+RUN openssl s_client -connect ${INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME}:${INTERNAL_DOCKER_REGISTRY_PORT} -showcerts </dev/null 2>/dev/null | openssl x509 -outform PEM | tee /usr/local/share/ca-certificates/${INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME}.crt
+RUN update-ca-certificates
+
+
+# Now copy auto deployment code
+COPY ${SCRIPT_WORKSPACE}/script/bash/fulcrum_roll_out.sh /fulcrum_roll_out.sh
+COPY ${SCRIPT_WORKSPACE}/script/bash/docker_start.sh /docker_start.sh
+COPY ${SCRIPT_WORKSPACE}/restapi/k8s_dev_admin.cfg /admin.cfg
+
+RUN  chmod +x /docker_start.sh && \
+     chmod +x /fulcrum_roll_out.sh
+
+ENTRYPOINT /docker_start.sh && /fulcrum_roll_out.sh

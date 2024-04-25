@@ -1,0 +1,25 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "name": "generator",
+            "type": "docker",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/slcb_test/Dockerfile",
+            "repository": {
+                "full_history": true
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_context": "../",
+            "build_only": false,
+            "security_context": {
+                "privileged": true
+            }
+        }
+    ]
+  }
+  

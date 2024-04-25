@@ -1,0 +1,22 @@
+platform: {{cloud_platform}}
+kops aws region: {{kops_aws_region}}
+{% if k8s_version is defined %}
+kubernetes version: {{k8s_version}}
+{% endif %}
+kubernetes dashboard url: https://api.{{kops_k8s_cluster_name}}.{{ kops_dns_zone }}/ui
+kubernetes dashboard user: admin
+kubernetes dashboard password: {{dashboard_password}}
+datahub version: {{vorapkg_version}}
+aws kops storage bucket name: {{kops_k8s_cluster_name}}
+datahub namespace: {{vora_kube_namespace}}
+{% if expose_vsystem == "yes" %}
+datahub launch-pad endpoint: https://{{ kops_k8s_cluster_name }}-kops.infra.{{ kops_dns_zone }}
+{% endif %}
+datahub user tenant name: default
+datahub system tenant name: system
+datahub user/system tenant user: {{vora_username}}
+datahub user tenant password: {{vora_password}}
+datahub system tenant password: {{vora_system_tenant_password}}
+{% if vora_kubernetes_local_pkg is not defined %}
+datahub package url: {{vora_kube_download_url}}
+{% endif %}

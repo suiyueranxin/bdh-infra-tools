@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: vora
+    vora-component: tx-coordinator
+  name: vora-tx-coordinator-ext
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - name: tc-ext
+    port: 10004
+    protocol: TCP
+    targetPort: 10004
+  - name: hana-wire
+    port: 30115
+    protocol: TCP
+    targetPort: 30115
+  selector:
+    app: vora
+    vora-component: tx-coordinator
+  sessionAffinity: None
+  type: NodePort
+status:
+  loadBalancer: {}

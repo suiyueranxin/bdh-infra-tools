@@ -1,0 +1,110 @@
+########## Cluster Information ##########
+cluster_name: voracluster
+cluster_manager: ambari
+#cluster_manager: cloudera
+#cluster_manager: mapr
+
+########## HDFS #########################
+hdfs_namenode_host: "{{ groups['masters'][0] }}"
+hdfs_namenode_port: 8020
+enable_hdfs_ha: false
+
+########## SPARK #########################
+#Ambari as following
+##spark version that Hortonworks supported, and you can check it from hortonworks site.
+##for example: https://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.6.0/bk_release-notes/content/comp_versions.html
+##spark 2.2.0 was supported from HDP 2.6.3
+##spark 1.6.3 was supported below HDP 2.6.3
+#Cloudera as following:
+##spark version that cloudera supported
+##spark 2.1, 2.2 was supported by parcels
+##spark 2.0, spark 2.1 was supported by CDH between 5.7 and 5.11, spark2.2 was supported only by 5.12
+##for example:http://archive.cloudera.com/spark2/parcels/
+##spark 1.6 was supported by CDH
+spark_version:
+  major: 2
+  minor: 2
+  patch: 0
+
+use_external_spark: false
+external_spark_install_dir: /opt/spark-vora-home
+
+spark_driver_memory: 512m
+spark_executor_memory: 1g
+spark_executor_instances: 3
+
+############# Yarn configuration (memory in MB) ########################
+yarn_nodemanager_resource_memory: "{% if ansible_connection == 'docker' %}7168{% else %}12288{% endif %}"
+yarn_scheduler_minimum_allocation: 512
+
+########## Ambari Installation ############################
+# Stack Compatibility:
+# http://docs.hortonworks.com/HDPDocuments/Ambari-2.4.2.0/bk_ambari-installation/content/determine_stack_compatibility.html
+# 2.2.1 (HDP 2.4)
+# 2.4.x (HDP 2.4~2.5)
+# !!! please note that HDP 2.5.2 would not work (doesn't exist in the hortonworks repository) !!!
+## ambari   HDP
+## 2.2.1 -> 2.4.2
+## 2.4.1 -> 2.5.0
+## 2.4.2 -> 2.5.3
+## 2.6.0.0 -> up to 2.6.3.0-235
+## 2.6.1.0 -> 2.6.0.3, 2.6.3.0-235, 2.6.4.0-91
+ambari_version:
+  major: 2
+  minor: 6
+  patch: 1
+  artifact: 0
+
+# Hortenworks Release definition
+hdp_stack_versions:
+  major: 2
+  minor: 6
+  patch: 4
+  artifact: 0
+
+# This vdf is required starting from ambari 2.6.0
+vdf_version: 91  # this is only for 2.6.4.0
+ambari_server_install_dir: /var/lib/ambari-server # do not change, changing install dir not supported yet
+ambari_agent_install_dir: /var/lib/ambari-agent # do not change, changing install dir not supported yet
+ambari_services_dir: "{{ambari_server_install_dir}}/resources/stacks/HDP/{{ hdp_stack_versions.major }}.{{ hdp_stack_versions.minor }}/services"
+hdp_stack_version_str: '{{ hdp_stack_versions.major }}.{{ hdp_stack_versions.minor }}.{{ hdp_stack_versions.patch }}.{{ hdp_stack_versions.artifact }}'
+ambari_spark_home: "/usr/hdp/current/spark{% if spark_version.major == 2 %}2{% else %}{% endif %}-client"
+
+########## Cloudera Installation ##########
+# Cloudera Release definition
+cdh_stack_version:
+  major: 5
+  minor: 12
+
+cloudera_spark_home: "/opt/cloudera/parcels/{% if spark_version.major == 2 %}SPARK2/lib/spark2{% else %}CDH/lib/spark{% endif %}"
+cloudera_install_dir: /opt/cloudera # do not change, changing install dir not supported yet
+cloudera_parcel_repo_dir: "{{cloudera_install_dir}}/parcel-repo"
+cloudera_csd_dir: "{{cloudera_install_dir}}/csd"
+#configuration for hadoop security options for cloudera
+use_hadoop_security: false
+
+########## Mapr Installation ##########
+# MapR Release definition
+# the supported MapR stack versions are 5.1.0, 5.2.0 and only define the core MapR
+# components like MaprFS, MCS, Yarn, ...
+# Via the ecosystems version, other components can be installed, like
+# Spark, Hive, Kafka, Kibana, ...
+# Ecosystem version 1.1 contains Spark 1.6,
+# Ecosystem version 2.0 contains Spark 2.0
+# For spark2,the corrsponding stack version: 5.2.1, MEP version: 3.0.1
+# For spark2,or the stack version: 6.0.0, MEP version: 4.0.0
+mapr_stack_version: 6.0.0
+mapr_ecosystem_version: 4.0.0
+mapr_hadoop_home: /opt/mapr/hadoop/hadoop-2.7.0/
+
+########## what to install additionally: ##########
+# Spark controller related configuration
+install_spark_controller_with_ambari: false # Only valid when cluster_manager=ambari
+install_spark_controller: false
+
+# Zeppelin ####
+install_zeppelin: false
+zeppelin_port: 9099 # Note that port+1 is used for web socket
+zeppelin_home: /home/vora/zeppelin
+
+workstation_temp_dir: /tmp

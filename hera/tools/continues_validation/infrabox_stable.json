@@ -1,0 +1,31 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "type": "docker",
+            "name": "build-installer",
+            "docker_file": "images/com.sap.datahub.linuxx86_64/installer/Dockerfile",
+            "resources": { "limits": { "cpu": 1, "memory": 1024 } },
+            "build_only": true,
+            "deployments": [{
+                "type": "docker-registry",
+                "host": "di-dev-cicd-v2.int.repositories.cloud.sap",
+                "repository": "infrabox/hanalite-releasepack/com.sap.datahub.linuxx86_64/installer"
+            }]
+        },
+        {
+            "clone_url": "https://github.wdf.sap.corp/bdh/bdh-infra-tools.git",
+            "infrabox_file": "hera/infrabox_hanalite-releasepack_nightly_generator.json",
+            "type": "git",
+            "name": "bdh-infra-tools",
+            "commit": "stable",
+            "depends_on": [
+                "build-installer"
+            ],
+            "environment": {
+                "GERRIT_CHANGE_BRANCH": "stable",
+                "GERRIT_CHANGE_PROJECT": "hanalite-releasepack"
+            }
+        }
+    ]
+}

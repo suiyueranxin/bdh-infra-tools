@@ -1,0 +1,18 @@
+java_home: /usr/java/default
+
+# Kerberos related variables
+kdc_packages:
+  - krb5-server
+
+autostart_services:
+  - krb5kdc
+  - kadmin
+
+kdc_config_path: /var/kerberos/krb5kdc
+xst_extra_options: "-norandkey"
+
+principal_db_path: "{{ kdc_config_path }}/principal"
+admin_keytab_path: "{{ kdc_config_path }}/kadm5.keytab"
+acl_path: "{{ kdc_config_path }}/kadm5.acl"
+key_stash_path: "{{ kdc_config_path }}/stash"
+krb_cmd_path: ""

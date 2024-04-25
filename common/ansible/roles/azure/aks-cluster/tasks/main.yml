@@ -1,0 +1,5 @@
+---
+- name: ref microsoftware azure common vars
+  include_vars:
+    file: "{{ role_path }}/../azure-vars.yml"
+- include: create-aks-cluster.yml

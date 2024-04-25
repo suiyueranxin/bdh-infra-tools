@@ -1,0 +1,17 @@
+FROM dockerio.int.repositories.cloud.sap/python:3.9.6-slim
+
+RUN echo "deb http://deb.debian.org/debian bullseye main" >> /etc/apt/sources.list && apt-get update && \
+    apt-get install -y apt-utils software-properties-common -q
+RUN apt-get install -y vim apt-transport-https ca-certificates curl git sudo \
+    libssl-dev openssh-client jq dnsutils skopeo cron && pip install --upgrade pip
+
+# Install Docker from Docker Inc. repositories.
+RUN curl -sSL https://get.docker.com/ | sh
+
+RUN pip install --no-cache-dir ansible==4.0.0 && \
+    pip install --ignore-installed -U boto3==1.17.97 && \
+    pip install --no-cache-dir pycryptodome==3.11.0 && \
+    pip install --no-cache-dir shade==1.33.0
+
+RUN ln -s /usr/share/pyshared/lsb_release.py /usr/local/lib/python3.9/site-packages/lsb_release.py && \
+    rm -rf /usr/bin/python3 && ln -s /usr/local/bin/python /usr/bin/python3

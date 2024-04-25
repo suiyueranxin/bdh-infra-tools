@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    cloud.google.com/load-balancer-type: Internal
+  labels:
+    app: vora
+    vora-component: tx-coordinator-ext
+  name: vora-tx-coordinator-ext
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - name: tc-ext
+    nodePort: 30509
+    port: 10004
+    protocol: TCP
+    targetPort: 10004
+  - name: hana-wire
+    nodePort: 30602
+    port: 30115
+    protocol: TCP
+    targetPort: 30115
+  selector:
+    app: vora
+    vora-component: tx-coordinator
+  sessionAffinity: None
+  type: LoadBalancer
+status:
+  loadBalancer: {}

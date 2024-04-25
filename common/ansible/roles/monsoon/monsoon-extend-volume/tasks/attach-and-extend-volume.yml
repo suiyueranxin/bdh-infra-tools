@@ -1,0 +1,38 @@
+---
+- name: Get existing vgname
+  shell: /sbin/vgdisplay --noheadings -C -o vg_name | xargs
+  register: vgname_reg
+
+- name: Set vg_name fact
+  set_fact:
+    vg_name: "{{vgname_reg.stdout}}"
+
+- name: Get current pv name
+  shell: /sbin/vgdisplay --noheadings -C -o pv_name | xargs
+  register: pvname_reg
+
+- name: Set pv_name fact
+  set_fact:
+    pv_name: "{{pvname_reg.stdout}}"
+
+- name: Extend volume group
+  lvg: vg={{vg_name}} pvs={{pv_name}},/dev/ansible_disk
+
+- name: Create rook volume
+  lvol: vg={{vg_name}} lv={{monsoon_rook_vol}} size={{monsoon_rook_size}}
+
+- name: create ext4 filesystem for rook volume
+  filesystem: fstype=ext4 dev=/dev/{{vg_name}}/{{monsoon_rook_vol}}
+
+- name: Mount rook volume
+  mount:
+    name: "{{ monsoon_rook_volume_mnt_point }}"
+    src: /dev/{{vg_name}}/{{monsoon_rook_vol}}
+    fstype: ext4
+    state: mounted
+
+- name: Extend volume {{vol_to_extend}}
+  lvol: vg={{vg_name}} lv={{vol_to_extend}} size=+95%FREE
+
+- name: Resize fs
+  command: /sbin/resize2fs /dev/{{vg_name}}/{{vol_to_extend}}

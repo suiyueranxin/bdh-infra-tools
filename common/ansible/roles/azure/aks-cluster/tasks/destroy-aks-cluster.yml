@@ -1,0 +1,7 @@
+---
+- name: login az cli
+  shell: "az login --service-principal --username {{ client_id }} --password {{ client_secret }} --tenant {{ tenant }}"
+  no_log: true
+
+- name: delete resource group
+  shell: "az group delete --resource-group {{azure_resource_group}} --yes"

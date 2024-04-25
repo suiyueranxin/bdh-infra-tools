@@ -1,0 +1,11 @@
+---
+- name: Wait until SSH is available from master
+  wait_for:
+    host: "{{ ssh_ip }}"
+    port: 22
+    delay: 60
+    timeout: 320
+    state: started
+  delegate_to: "{{ master_external_ip }}"
+  vars:
+    ansible_ssh_user: "{{ gcloud_ssh_user }}"

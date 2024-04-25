@@ -1,0 +1,23 @@
+{
+    "version": 1,
+    "jobs": [
+    {
+        "type": "docker",
+        "name": "generator",
+        "docker_file": "hera/ci/bdh-infra-tools/infrabox/generator/Dockerfile",
+        "build_context": "../",
+        "build_only": false,
+        "environment": {
+            "ENABLE_TEST_CYCLE": "true",
+            "TEST_CYCLE": "NIGHTLY_VALIDATION_debug",
+            "INCLUDE_BUILD_JOB": "true",
+            "INCLUDE_UNINSTALL_JOB": "true",
+            "BDH_INFRA_TOOLS_BRANCH": "master",
+            "BDH_INFRA_BUILD_CONTEXT": "/data/repo"
+        },
+        "resources": { "limits": { "cpu": 2, "memory": 2048 } },
+        "repository": {
+            "full_history": true
+        }
+    }]
+}

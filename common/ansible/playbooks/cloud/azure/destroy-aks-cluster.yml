@@ -1,0 +1,7 @@
+---
+- hosts: workstation
+  tasks:
+  - include_role:
+      name: aks-cluster
+      tasks_from: destroy-aks-cluster
+      

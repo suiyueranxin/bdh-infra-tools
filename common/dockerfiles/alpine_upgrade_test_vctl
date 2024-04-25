@@ -1,0 +1,9 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_python_base:latest
+
+ARG KUBECTL_VERSION=1.20.9
+
+RUN apk add --no-cache --update libc6-compat > /dev/null
+
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl && \
+    chmod +x kubectl && cp kubectl /bin/kubectl
+

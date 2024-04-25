@@ -1,0 +1,25 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+workers
+
+[workers:children]
+just_workers
+jumpbox
+
+[masters]
+xxx.mo.sap.corp
+
+[just_workers]
+
+[jumpbox]
+xxx.mo.sap.corp
+
+[all:vars]
+cluster_provider=monsoon
+ansible_ssh_common_args='-o ServerAliveInterval=600'
+# general Monsoon options
+# attached disk will be extended to this logical volume
+vol_to_extend=var

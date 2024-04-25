@@ -1,0 +1,46 @@
+---
+- name: check hadoop existence
+  shell: kubectl get ns hadoop
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: hadoop_result
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- set_fact:
+    hadoop_installed: yes
+  when: hadoop_result.rc == 0
+  tags:
+    - install
+    - update
+
+- set_fact:
+    hadoop_installed: no
+  when: hadoop_result.rc != 0
+  tags:
+    - install
+    - update
+
+- shell: kubectl exec -n hadoop -it hadoop-hadoop-hdfs-nn-0 -- /usr/local/hadoop/bin/hdfs dfs -test -z /checkpoint
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  args:
+    executable: /bin/bash
+  register: dir_status
+  ignore_errors: yes
+  when: hadoop_installed
+  tags:
+    - install
+    - update
+
+- shell: kubectl exec -n hadoop -it hadoop-hadoop-hdfs-nn-0 -- /usr/local/hadoop/bin/hdfs dfs -mkdir /checkpoint
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  args:
+    executable: /bin/bash
+  when: hadoop_installed and dir_status.rc != 0
+  tags:
+    - install
+    - update

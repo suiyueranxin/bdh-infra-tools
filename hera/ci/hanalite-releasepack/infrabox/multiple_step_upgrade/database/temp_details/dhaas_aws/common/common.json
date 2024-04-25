@@ -1,0 +1,154 @@
+{
+    "version": 1, 
+    "jobs": [
+        {
+            "name": "dhaas_creation_dhaas_aws", 
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile", 
+            "build_only": false, 
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "MAX_ERROR_RETRY_NUM": "2", 
+                "PROVISION_PLATFORM": "DHAAS-AWS", 
+                "UPGRADE_TEST": "yes",
+                "SYS_ACCOUNT": "system", 
+                "SYS_PASSWORD": "@AHD90G2s3yls=", 
+                "CREATE_TOTAL_TIMEOUT": "29400", 
+                "MAX_READY_WAIT": "28800", 
+                "SERVER_URL": "https://im-api.datahub.only.sap", 
+                "MAX_CREATE_RETRY_NUM": "1", 
+                "MAX_REFUSE_WAIT": "10800", 
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade",
+                "K8S_VERSION": "1.24"
+            }, 
+            "timeout": 30600, 
+            "type": "docker", 
+            "resources": {
+                "limits": {
+                    "cpu": 2, 
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "fetch-e2e-secrets",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            },
+            "build_only": false,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/fetch-e2e-secrets/Dockerfile",
+            "build_context": "../",
+            "repository": {
+                "full_history": true
+            },
+            "environment": {
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            }
+        },
+        {
+            "name": "system_upgrade_<INDEX>_dhaas_aws", 
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile", 
+            "build_only": false, 
+            "build_context": "../",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "MAX_ERROR_RETRY_NUM": "2", 
+                "PROVISION_PLATFORM": "DHAAS-AWS", 
+                "JOB_ACTION": "Upgrade",
+                "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws",
+                "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+                "SYS_ACCOUNT": "system", 
+                "SYS_PASSWORD": "@AHD90G2s3yls=", 
+                "MAX_READY_WAIT": "28800", 
+                "SERVER_URL": "https://im-api.datahub.only.sap", 
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade"
+            }, 
+            "timeout": 30600, 
+            "type": "docker", 
+            "resources": {
+                "limits": {
+                    "cpu": 2, 
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "type": "docker",
+            "name": "log_collection_upgrade_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "system_upgrade_<INDEX>_dhaas_aws",
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "type": "docker",
+            "name": "dhaas_deletion_upgrade_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "build_only": false,
+            "timeout": 10800,
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "type": "docker",
+            "name": "job_report_upgrade_dhaas_aws",
+            "timeout": 7200,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "environment": {
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade",
+                "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+                "PARENT_INSTALL_JOB": "system_upgrade_<INDEX>_dhaas_aws",
+                "FULL_PLATFORM": "dhaas_aws",
+                "PROVISION_PLATFORM": "DHAAS-AWS", 
+                "DEPLOY_TYPE": "on_cloud",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            }
+        }
+
+    ]
+}

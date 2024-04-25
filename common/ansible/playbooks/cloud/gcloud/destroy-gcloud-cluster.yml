@@ -1,0 +1,31 @@
+---
+- hosts: nodes
+  tasks: []
+
+- name: Destroy gcloud cluster
+  hosts: workstation
+  tasks:
+    - name: Set google cloud Service Account environment
+      set_fact:
+        gcloud_service_account_credentials: "{{ lookup('file',google_application_credentials) | from_json }}"
+
+    - name: Terminate instances of gcloud cluster
+      gce:
+        credentials_file: "{{google_application_credentials}}"
+        service_account_email: "{{ gcloud_service_account_credentials.client_email }}"
+        project_id: "{{ hostvars[item].project_id }}"
+        zone: "{{ hostvars[item].zone }}"
+        instance_names: "{{ hostvars[item].instance_name }}"
+        state: "absent"
+      with_items: "{{ groups['nodes'] }}"
+
+    - name: Release external IP address for master use
+      gce_eip:
+        service_account_email: "{{ gcloud_service_account_credentials.client_email }}"
+        credentials_file: "{{ google_application_credentials }}"
+        project_id: "{{ hostvars[item].project_id }}"
+        name: "{{ hostvars[item].external_ip_name }}"
+        region: "{{ hostvars[item].external_ip_region }}"
+        state: "absent"
+      with_items: "{{ groups['masters'] }}"
+

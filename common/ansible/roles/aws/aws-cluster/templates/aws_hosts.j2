@@ -1,0 +1,50 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+workers
+
+[workers:children]
+just_workers
+jumpbox
+
+[masters]
+{% for item in master_instances %}
+{{ item.private_ip }} id={{ item.id }} ansible_user={{ aws_ssh_user }} ansible_become=True ansible_become_user=root ansible_become_method=sudo
+{% endfor %}
+
+[masters:vars]
+{% for item in master_instances_facts %}
+external_ip={{ item.public_ip_address }}
+external_recordset={{ item.public_dns_name }}
+{% endfor %}
+
+[just_workers]
+{% for item in worker_instances %}
+{% if not loop.first %}
+{{ item.private_ip }} id={{ item.id }} ansible_user={{ aws_ssh_user }} ansible_become=True ansible_become_user=root ansible_become_method=sudo
+{% endif %}
+{% endfor %}
+
+[jumpbox]
+{% for item in worker_instances %}
+{% if loop.first %}
+{{ item.private_ip }} id={{ item.id }} ansible_user={{ aws_ssh_user }} ansible_become=True ansible_become_user=root ansible_become_method=sudo
+{% endif %}
+{% endfor %}
+
+[all:vars]
+cluster_provider=aws
+aws_endpoint_url={{ ec2_endpoint_url }}
+aws_instance_ids=[{% for item in master_instances %}{% if not loop.last %},{% endif %} '{{ item.id }}' {% endfor %}   {% for item in worker_instances %},'{{ item.id }}'{% endfor %}]
+ansible_become=True
+ansible_become_user=root
+ansible_become_method=sudo
+ansible_become_ask_pass=False
+{% if out_of_aws_project =='yes' %}
+{% for item in master_instances_facts %}
+ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no {{ aws_ssh_user }}@{{ item.public_ip_address }}"'
+{% endfor %}
+{% endif %}
+

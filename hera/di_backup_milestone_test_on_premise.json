@@ -1,0 +1,4698 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "name": "ci_dashboard_registration",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ci_dashboard_milestone_registration:latest",
+            "repository": {
+                "full_history": true
+            },
+            "timeout": 2400,
+            "environment": {
+                "DEPLOY_TYPE": "on_premise"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "k8s_creation_gke",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "MAX_READY_WAIT": "3600",
+                "MAX_REFUSE_WAIT": "7200",
+                "PROVISION_PLATFORM": "GKE",
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_CREATE_RETRY_NUM": "3",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            }
+        },
+        {
+            "name": "gke_backup_gke",
+            "type": "docker",
+            "timeout": 10800,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "common/dockerfiles/ansible_runtime_gcloud",
+            "environment": {
+                "VORA_PASSWORD": "DiTestDefault@123",
+                "VORA_SYSTEM_TENANT_PASSWORD": "DiTestSystem@123",
+                "INSTALL_VIA_SLCB": "true",
+                "ENABLE_BACKUP": "true",
+                "FTPHOST": "10.47.221.67",
+                "FTPPASS": "Sapvora123",
+                "FTPUSER": "infrabox_user",
+                "FTPENABLE": "FALSE",
+                "GCP_PROJECT_ID": "sap-p-and-i-big-data-vora",
+                "VSYSTEM_VERSION": "1.4.3",
+                "K8S_CREATION_JOB": "k8s_creation_gke",
+                "PROVISION_PLATFORM": "GKE",
+                "GKE_INGRESS_TIMEOUT": "90",
+                "ENABLE_AUTHENTICATION": "no",
+                "SKIP_VSYSTEM_ASSEMBLY": "yes",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "USE_SKOPEO": "yes",
+                "GKE_CHANGE_INGRESS_TIMEOUT": "yes",
+                "GCP_APPLICATION_CREDENTIALS": "/google_credentials.txt",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "e2e_preparation_test_gke",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gke_backup_gke"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "PREPARATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "gke_backup_gke",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_preparation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "trigger_snapshot_backup_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/trigger_backup/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gke_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gke"
+                }
+            ],
+            "environment": {
+                "PARENT_INSTALL_JOB": "gke_backup_gke",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_test_backup_gke",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gke_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_gke"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "gke_backup_gke",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "create_restored_cluster_gke",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "MAX_READY_WAIT": "3600",
+                "MAX_REFUSE_WAIT": "7200",
+                "PROVISION_PLATFORM": "GKE",
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_CREATE_RETRY_NUM": "3",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            }
+        },
+        {
+            "name": "gke_restore_gke",
+            "type": "docker",
+            "timeout": 10800,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "common/dockerfiles/ansible_runtime_gcloud",
+            "environment": {
+                "VORA_PASSWORD": "DiTestDefault@123",
+                "VORA_SYSTEM_TENANT_PASSWORD": "DiTestSystem@123",
+                "INSTALL_VIA_SLCB": "true",
+                "ENABLE_BACKUP": "true",
+                "ENABLE_RESTORE": "true",
+                "BACKUP_JOB": "trigger_snapshot_backup_gke",
+                "FTPHOST": "10.47.221.67",
+                "FTPPASS": "Sapvora123",
+                "FTPUSER": "infrabox_user",
+                "FTPENABLE": "FALSE",
+                "GCP_PROJECT_ID": "sap-p-and-i-big-data-vora",
+                "VSYSTEM_VERSION": "1.4.3",
+                "K8S_CREATION_JOB": "create_restored_cluster_gke",
+                "PROVISION_PLATFORM": "GKE",
+                "GKE_INGRESS_TIMEOUT": "90",
+                "ENABLE_AUTHENTICATION": "no",
+                "SKIP_VSYSTEM_ASSEMBLY": "yes",
+                "VORA_NAMESPACE_PREFIX": "di-restore",
+                "USE_SKOPEO": "yes",
+                "GKE_CHANGE_INGRESS_TIMEOUT": "yes",
+                "GCP_APPLICATION_CREDENTIALS": "/google_credentials.txt",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "trigger_snapshot_backup_gke"
+                },
+                {
+                    "job": "create_restored_cluster_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "e2e_validation_test_backup_gke",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "e2e_validation_test_restore_gke",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "e2e_preparation_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gke_restore_gke"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "gke_restore_gke",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_teardown_test_restore_gke",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gke_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gke"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "TEARDOWN",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "gke_restore_gke",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_teardown",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "log_collection_backup_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_gke"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gke_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_gke"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PARENT_INSTALL_JOB": "gke_backup_gke"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "log_collection_restore_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "create_restored_cluster_gke"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gke_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_gke"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PARENT_INSTALL_JOB": "gke_restore_gke"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "k8s_deletion_created_cluster_gke",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_gke",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PROVISION_PLATFORM": "GKE"
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "gke_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "gke_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_gke"
+                }
+            ]
+        },
+        {
+            "name": "k8s_deletion_restored_cluster_gke",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "create_restored_cluster_gke",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PROVISION_PLATFORM": "GKE"
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "gke_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "gke_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_gke"
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "job_report_backup_restore_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "gke_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "create_restored_cluster_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "gke_restore_gke"
+                },
+                {
+                    "job": "log_collection_backup_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_created_cluster_gke"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_restored_cluster_gke"
+                }
+            ],
+            "environment": {
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "FULL_PLATFORM": "gke,eks,aks,gardener-ccloud",
+                "DEPLOY_TYPE": "on_premise",
+                "K8S_CREATION_JOB": "k8s_creation_gke",
+                "PARENT_INSTALL_JOB": "gke_backup_gke",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "PROVISION_PLATFORM": "GKE",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            }
+        },
+        {
+            "name": "k8s_creation_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "MAX_READY_WAIT": "3600",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "MAX_CREATE_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "7200",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "timeout": 12600,
+            "repository": {
+                "full_history": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "eks_backup_eks",
+            "docker_file": "common/dockerfiles/ansible_runtime_eks",
+            "build_arguments": {
+                "SCRIPT_WORKSPACE": "fulcrum",
+                "ANSIBLE_WORKSPACE": "common"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_eks"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "VORA_PASSWORD": "DiTestDefault@123",
+                "VORA_SYSTEM_TENANT_PASSWORD": "DiTestSystem@123",
+                "INSTALL_VIA_SLCB": "true",
+                "USE_SKOPEO": "yes",
+                "ENABLE_BACKUP": "true",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "FTPUSER": "infrabox_user",
+                "FTPHOST": "10.47.221.67",
+                "K8S_CREATION_JOB": "k8s_creation_eks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "FTPENABLE": "FALSE",
+                "EXPOSE_PORT": "yes",
+                "ENABLE_AUTHENTICATION": "no",
+                "FTPPASS": "Sapvora123",
+                "VORA_KUBE_SUFFIX": "DI-Assembly"
+            },
+            "timeout": 14400,
+            "repository": {
+                "full_history": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "e2e_preparation_test_eks",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_eks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "eks_backup_eks"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "PREPARATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "eks_backup_eks",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_preparation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "trigger_snapshot_backup_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/trigger_backup/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_eks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "eks_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_eks"
+                }
+            ],
+            "environment": {
+                "PARENT_INSTALL_JOB": "eks_backup_eks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_test_backup_eks",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_eks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "eks_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_eks"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "eks_backup_eks",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "create_restored_cluster_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "MAX_READY_WAIT": "3600",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "MAX_CREATE_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "7200",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "timeout": 12600,
+            "repository": {
+                "full_history": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "eks_restore_eks",
+            "type": "docker",
+            "timeout": 10800,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "common/dockerfiles/ansible_runtime_eks",
+            "environment": {
+                "VORA_PASSWORD": "DiTestDefault@123",
+                "VORA_SYSTEM_TENANT_PASSWORD": "DiTestSystem@123",
+                "INSTALL_VIA_SLCB": "true",
+                "USE_SKOPEO": "yes",
+                "ENABLE_BACKUP": "true",
+                "ENABLE_RESTORE": "true",
+                "BACKUP_JOB": "trigger_snapshot_backup_eks",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "FTPUSER": "infrabox_user",
+                "FTPHOST": "10.47.221.67",
+                "K8S_CREATION_JOB": "create_restored_cluster_eks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "VORA_NAMESPACE_PREFIX": "di-restore",
+                "FTPENABLE": "FALSE",
+                "EXPOSE_PORT": "yes",
+                "ENABLE_AUTHENTICATION": "no",
+                "FTPPASS": "Sapvora123",
+                "VORA_KUBE_SUFFIX": "DI-Assembly"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "trigger_snapshot_backup_eks"
+                },
+                {
+                    "job": "create_restored_cluster_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "e2e_validation_test_backup_eks",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "e2e_validation_test_restore_eks",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_eks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "eks_restore_eks"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "eks_restore_eks",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_teardown_test_restore_eks",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "eks_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_eks"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "TEARDOWN",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "eks_restore_eks",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_teardown_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "log_collection_backup_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_eks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "eks_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_eks"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PARENT_INSTALL_JOB": "eks_backup_eks"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "log_collection_restore_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "create_restored_cluster_eks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "eks_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_eks"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PARENT_INSTALL_JOB": "eks_restore_eks"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "k8s_deletion_created_cluster_eks",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_eks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PROVISION_PLATFORM": "AWS-EKS"
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "eks_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "eks_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_eks"
+                }
+            ]
+        },
+        {
+            "name": "k8s_deletion_restored_cluster_eks",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "create_restored_cluster_eks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PROVISION_PLATFORM": "AWS-EKS"
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "eks_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "eks_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_eks"
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "job_report_backup_restore_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "eks_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "create_restored_cluster_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "eks_restore_eks"
+                },
+                {
+                    "job": "log_collection_backup_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_created_cluster_eks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_restored_cluster_eks"
+                }
+            ],
+            "environment": {
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "FULL_PLATFORM": "gke,eks,aks,gardener-ccloud",
+                "DEPLOY_TYPE": "on_premise",
+                "K8S_CREATION_JOB": "k8s_creation_eks",
+                "PARENT_INSTALL_JOB": "eks_backup_eks",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            }
+        },
+        {
+            "name": "k8s_creation_aks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "PROVISION_PLATFORM": "AZURE-AKS",
+                "MAX_READY_WAIT": "3600",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "AKS_SUBSCRIPTION_NAME": "sap-pi-big-data-validation",
+                "MAX_CREATE_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "7200",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "timeout": 12600,
+            "repository": {
+                "full_history": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "aks_backup_aks",
+            "docker_file": "common/dockerfiles/ansible_runtime_aks",
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_aks"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "VORA_PASSWORD": "DiTestDefault@123",
+                "VORA_SYSTEM_TENANT_PASSWORD": "DiTestSystem@123",
+                "INSTALL_VIA_SLCB": "true",
+                "ENABLE_BACKUP": "true",
+                "PROVISION_PLATFORM": "AZURE-AKS",
+                "FTPUSER": "infrabox_user",
+                "FTPHOST": "10.47.221.67",
+                "AZURE_CLIENT_ID": "8c0c951d-de30-4e69-a66e-406fc50dbaa1",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "AZURE_TENANT": "42f7676c-f455-423c-82f6-dc2d99791af7",
+                "FTPENABLE": "FALSE",
+                "K8S_CREATION_JOB": "k8s_creation_aks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "AZURE_SUBSCRIPTION_ID": "2c3d8ee1-57ad-49c0-8c04-27180f615c93",
+                "ENABLE_AUTHENTICATION": "no",
+                "FTPPASS": "Sapvora123",
+                "AZURE_CLIENT_SECRET": "XO/34ztNfNPRY1xrOiUIwHgoxSiDjocNUGrNOFFMXyw=",
+                "EXPOSE_PORT": "yes",
+                "VORA_KUBE_SUFFIX": "DI-Assembly"
+            },
+            "timeout": 14400,
+            "repository": {
+                "full_history": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "e2e_preparation_test_aks",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "aks_backup_aks"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "PREPARATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "aks_backup_aks",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_preparation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "trigger_snapshot_backup_aks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/trigger_backup/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "depends_on": [
+                {
+                    "job": "k8s_creation_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "aks_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_aks"
+                }
+            ],
+            "environment": {
+                "PARENT_INSTALL_JOB": "aks_backup_aks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_test_backup_aks",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "aks_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_aks"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "aks_backup_aks",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "create_restored_cluster_aks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "PROVISION_PLATFORM": "AZURE-AKS",
+                "MAX_READY_WAIT": "3600",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "AKS_SUBSCRIPTION_NAME": "sap-pi-big-data-validation",
+                "MAX_CREATE_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "7200",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "timeout": 12600,
+            "repository": {
+                "full_history": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "aks_restore_aks",
+            "docker_file": "common/dockerfiles/ansible_runtime_aks",
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "aks_backup_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "trigger_snapshot_backup_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_aks"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "VORA_PASSWORD": "DiTestDefault@123",
+                "VORA_SYSTEM_TENANT_PASSWORD": "DiTestSystem@123",
+                "INSTALL_VIA_SLCB": "true",
+                "ENABLE_BACKUP": "true",
+                "ENABLE_RESTORE": "true",
+                "BACKUP_JOB": "trigger_snapshot_backup_aks",
+                "PROVISION_PLATFORM": "AZURE-AKS",
+                "FTPUSER": "infrabox_user",
+                "FTPHOST": "10.47.221.67",
+                "AZURE_CLIENT_ID": "8c0c951d-de30-4e69-a66e-406fc50dbaa1",
+                "VORA_NAMESPACE_PREFIX": "di-restore",
+                "AZURE_TENANT": "42f7676c-f455-423c-82f6-dc2d99791af7",
+                "FTPENABLE": "FALSE",
+                "K8S_CREATION_JOB": "create_restored_cluster_aks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "AZURE_SUBSCRIPTION_ID": "2c3d8ee1-57ad-49c0-8c04-27180f615c93",
+                "ENABLE_AUTHENTICATION": "no",
+                "FTPPASS": "Sapvora123",
+                "AZURE_CLIENT_SECRET": "XO/34ztNfNPRY1xrOiUIwHgoxSiDjocNUGrNOFFMXyw=",
+                "EXPOSE_PORT": "yes",
+                "VORA_KUBE_SUFFIX": "DI-Assembly"
+            },
+            "timeout": 14400,
+            "repository": {
+                "full_history": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_test_restore_aks",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_aks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "aks_restore_aks"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "aks_restore_aks",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_teardown_test_restore_aks",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "aks_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_aks"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "TEARDOWN",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "aks_restore_aks",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_teardown_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "log_collection_backup_aks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_aks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "aks_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_aks"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PARENT_INSTALL_JOB": "aks_backup_aks"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "log_collection_restore_aks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "create_restored_cluster_aks"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "aks_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_aks"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PARENT_INSTALL_JOB": "aks_restore_aks"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "k8s_deletion_created_cluster_aks",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_aks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PROVISION_PLATFORM": "AZURE-AKS"
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_aks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_aks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "aks_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "aks_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_aks"
+                }
+            ]
+        },
+        {
+            "name": "k8s_deletion_restored_cluster_aks",
+            "type": "docker",
+            "timeout": 12600,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "create_restored_cluster_aks",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PROVISION_PLATFORM": "AZURE-AKS"
+            },
+            "depends_on": [
+                {
+                    "job": "create_restored_cluster_aks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_aks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_aks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "aks_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "aks_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_aks"
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "job_report_backup_restore_aks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "depends_on": [
+                {
+                    "job": "k8s_creation_aks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "aks_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "create_restored_cluster_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "aks_restore_aks"
+                },
+                {
+                    "job": "log_collection_backup_aks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_aks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_created_cluster_aks"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_restored_cluster_aks"
+                }
+            ],
+            "environment": {
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "FULL_PLATFORM": "gke,eks,aks,gardener-ccloud",
+                "DEPLOY_TYPE": "on_premise",
+                "K8S_CREATION_JOB": "k8s_creation_aks",
+                "PARENT_INSTALL_JOB": "aks_backup_aks",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "PROVISION_PLATFORM": "AZURE-AKS",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            }
+        },
+        {
+            "name": "k8s_creation_gardener-ccloud",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "MAX_ERROR_RETRY_NUM": "4",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "PROVISION_PLATFORM": "GARDENER-CCLOUD",
+                "MAX_READY_WAIT": "3600",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "MAX_CREATE_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "7200",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "MINIO_ACCESS_KEY": {
+                    "$secret": "MINIO_ACCESS_KEY"
+                },
+                "MINIO_SECRET_KEY": {
+                    "$secret": "MINIO_SECRET_KEY"
+                },
+                "REGISTRY_AS_SHARED_CLUSTER": "no",
+                "ADD_INTO_FIREWALL_WHITELIST": "no",
+                "ENABLE_VORA_INSTALLATION": "false"
+            },
+            "timeout": 12600,
+            "repository": {
+                "full_history": true
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "gardener-ccloud_backup_gardener-ccloud",
+            "type": "docker",
+            "timeout": 10800,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "common/dockerfiles/ansible_runtime_on_gardener",
+            "environment": {
+                "EMAIL": "pin.song@sap.com",
+                "INSTALL_VIA_SLCB": "true",
+                "FTPHOST": "10.47.221.67",
+                "FTPPASS": "Sapvora123",
+                "ENABLE_BACKUP": "true",
+                "FTPENABLE": "FALSE",
+                "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+                "VSYSTEM_VERSION": "1.4.3",
+                "K8S_CREATION_JOB": "k8s_creation_gardener-ccloud",
+                "PROVISION_PLATFORM": "GARDENER-CCLOUD",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "USE_SKOPEO": "yes",
+                "EXPOSE_PORT": "yes",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "MINIO_ACCESS_KEY": {
+                    "$secret": "MINIO_ACCESS_KEY"
+                },
+                "MINIO_SECRET_KEY": {
+                    "$secret": "MINIO_SECRET_KEY"
+                },
+                "S3_ACCESS_KEY": {
+                    "$secret": "S3_ACCESS_KEY"
+                },
+                "S3_SECRET_ACCESS_KEY": {
+                    "$secret": "S3_SECRET_ACCESS_KEY"
+                },
+                "MINIO_URL": "http://v2-minio.datahub.only.sap:9000",
+                "GARDENER_PROJECT_SECRET": "im-openstack-secret",
+                "GARDENER_PROJECT_EXT_NETWORK_SUFFIX": "external-monsoon3-vora"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "name": "e2e_preparation_test_gardener-ccloud",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gardener-ccloud_backup_gardener-ccloud"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "PREPARATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "gardener-ccloud_backup_gardener-ccloud",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_preparation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "trigger_snapshot_backup_gardener-ccloud",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/trigger_backup/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gardener-ccloud_backup_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gardener-ccloud"
+                }
+            ],
+            "environment": {
+                "PARENT_INSTALL_JOB": "gardener-ccloud_backup_gardener-ccloud",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_test_backup_gardener-ccloud",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gardener-ccloud_backup_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_gardener-ccloud"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "gardener-ccloud_backup_gardener-ccloud",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "gardener-ccloud_restore_gardener-ccloud",
+            "type": "docker",
+            "timeout": 10800,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "docker_file": "common/dockerfiles/ansible_runtime_on_gardener",
+            "environment": {
+                "EMAIL": "pin.song@sap.com",
+                "INSTALL_VIA_SLCB": "true",
+                "FTPHOST": "10.47.221.67",
+                "FTPPASS": "Sapvora123",
+                "FTPUSER": "infrabox_user",
+                "ENABLE_BACKUP": "true",
+                "ENABLE_RESTORE": "true",
+                "FTPENABLE": "FALSE",
+                "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+                "VSYSTEM_VERSION": "1.4.3",
+                "K8S_CREATION_JOB": "k8s_creation_gardener-ccloud",
+                "PROVISION_PLATFORM": "GARDENER-CCLOUD",
+                "BACKUP_JOB": "trigger_snapshot_backup_gardener-ccloud",
+                "VORA_NAMESPACE_PREFIX": "di-restore",
+                "VORA_KUBE_SUFFIX": "DI-Assembly",
+                "USE_SKOPEO": "yes",
+                "EXPOSE_PORT": "yes",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "MINIO_ACCESS_KEY": {
+                    "$secret": "MINIO_ACCESS_KEY"
+                },
+                "MINIO_SECRET_KEY": {
+                    "$secret": "MINIO_SECRET_KEY"
+                },
+                "MINIO_URL": "http://v2-minio.datahub.only.sap:9000",
+                "GARDENER_PROJECT_SECRET": "im-openstack-secret",
+                "GARDENER_PROJECT_EXT_NETWORK_SUFFIX": "external-monsoon3-vora"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "trigger_snapshot_backup_gardener-ccloud"
+                },
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_gardener-ccloud",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "name": "e2e_validation_test_restore_gardener-ccloud",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gardener-ccloud_restore_gardener-ccloud"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "gardener-ccloud_restore_gardener-ccloud",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_teardown_test_restore_gardener-ccloud",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gardener-ccloud_restore_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gardener-ccloud"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "TEARDOWN",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "gardener-ccloud_restore_gardener-ccloud",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_teardown_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "log_collection_restore_gardener-ccloud",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gardener-ccloud_restore_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_gardener-ccloud"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PARENT_INSTALL_JOB": "gardener-ccloud_restore_gardener-ccloud"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "log_collection_backup_gardener-ccloud",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "k8s_creation_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "gardener-ccloud_backup_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_gardener-ccloud"
+                }
+            ],
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PARENT_INSTALL_JOB": "gardener-ccloud_backup_gardener-ccloud"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "k8s_deletion_created_cluster_gardener-ccloud",
+            "type": "docker",
+            "timeout": 12600,
+            "build_context": "../",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_gardener-ccloud",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "PROVISION_PLATFORM": "GARDENER-CCLOUD"
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "gardener-ccloud_restore_gardener-ccloud",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_gardener-ccloud",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_gardener-ccloud",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "repository": {
+                "full_history": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "job_report_backup_restore_gardener-ccloud",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "build_context": "../",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener-ccloud",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "gardener-ccloud_backup_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "gardener-ccloud_restore_gardener-ccloud"
+                },
+                {
+                    "job": "log_collection_backup_gardener-ccloud",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_restore_gardener-ccloud",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "trigger_snapshot_backup_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_backup_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_restore_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_restore_gardener-ccloud"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "k8s_deletion_created_cluster_gardener-ccloud"
+                }
+            ],
+            "environment": {
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "FULL_PLATFORM": "gke,eks,aks,gardener-ccloud",
+                "DEPLOY_TYPE": "on_premise",
+                "K8S_CREATION_JOB": "k8s_creation_gardener-ccloud",
+                "PARENT_INSTALL_JOB": "gardener-ccloud_backup_gardener-ccloud",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "PROVISION_PLATFORM": "GARDENER-CCLOUD",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            }
+        }
+    ]
+}

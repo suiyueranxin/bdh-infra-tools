@@ -1,0 +1,62 @@
+---
+- set_fact:
+    install_flag: ""
+  tags:
+    - uninstall
+
+- include: common-install-parameters.yml
+
+- name: set KUBECONFIG
+  set_fact:
+    installer_env:
+      KUBECONFIG: "{{ eks_k8s_cluster_kubeconfig }}"
+  tags:
+    - uninstall
+
+- name: set eks install docker registry
+  set_fact:
+    eks_docker_install_registry: "{{ eks_docker_registry }}"
+  when: eks_docker_registry_suffix is undefined or eks_docker_registry_suffix == ""
+  tags:
+    - uninstall
+
+- name: set eks install docker registry with suffix
+  set_fact:
+    eks_docker_install_registry: "{{ eks_docker_registry }}/{{ eks_docker_registry_suffix }}"
+  when: eks_docker_registry_suffix is defined and eks_docker_registry_suffix != ""
+  tags:
+    - uninstall
+
+- name: set default eks vflow docker registry
+  set_fact:
+    eks_vflow_install_registry: ""
+  when: eks_vflow_docker_registry_suffix is undefined or eks_vflow_docker_registry_suffix == ""
+  tags:
+    - uninstall
+
+- name: set eks vflow docker registry
+  set_fact:
+    eks_vflow_install_registry: "{{ eks_docker_registry }}/{{ eks_vflow_docker_registry_suffix }}"
+  when: eks_vflow_docker_registry_suffix is defined and eks_vflow_docker_registry_suffix != ""
+  tags:
+    - uninstall
+
+#- include_role:
+#    name: vora-update-certs
+#  tags:
+#    - update
+
+# - name: Starting vora installation process via slplugin
+#   include: eks-install-vora-slplugin.yml
+#   when: install_vora_via_slplugin == "true"
+
+- name: Starting vora uninstallation process via slcb
+  include: eks-uninstall-vora-slcb.yml
+  when: uninstall_via_slcb == "true"
+
+- fetch:
+    src: "{{installer_workspace}}/install_process.log"
+    dest: "{{ vora_installation_log }}"
+    flat: yes
+  tags:
+    - uninstall

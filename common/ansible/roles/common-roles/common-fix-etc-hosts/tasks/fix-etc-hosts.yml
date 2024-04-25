@@ -1,0 +1,35 @@
+---
+- name:
+  set_fact:
+    host_fqdn: "{{ ansible_fqdn }}"
+  when: host_fqdn is not defined
+
+- block:
+  - name: Remove hostname lines in hosts.redhat.tmpl for Monsoon/CCloud
+    lineinfile: dest=/etc/cloud/templates/hosts.redhat.tmpl regexp='.+fqdn.+' state=absent
+
+  - name: Insert ip with fqdn in hosts.redhat.tmpl for Monsoon/CCloud
+    lineinfile: dest=/etc/cloud/templates/hosts.redhat.tmpl line="{{ ansible_default_ipv4.address }} {{ host_fqdn }} {{ ansible_hostname }}"
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
+- block:
+  - name: Remove hostname lines in hosts.debian.tmpl for Monsoon/CCloud
+    lineinfile: dest=/etc/cloud/templates/hosts.debian.tmpl regexp='.+fqdn.+' state=absent
+
+  - name: Insert ip with fqdn in hosts.debian.tmpl for Monsoon/CCloud
+    lineinfile: dest=/etc/cloud/templates/hosts.debian.tmpl line="{{ ansible_default_ipv4.address }} {{ host_fqdn }} {{ ansible_hostname }}"
+  when: ansible_os_family == "Debian"
+
+- block:
+  - name: Remove hostname lines in hosts.suse.tmpl for Monsoon/CCloud
+    lineinfile: dest=/etc/cloud/templates/hosts.suse.tmpl regexp='.+fqdn.+' state=absent
+
+  - name: Insert ip with fqdn in hosts.suse.tmpl for Monsoon/CCloud
+    lineinfile: dest=/etc/cloud/templates/hosts.suse.tmpl line="{{ ansible_default_ipv4.address }} {{ host_fqdn }} {{ ansible_hostname }}"
+  when: ansible_os_family == "Suse"
+
+- name: Remove hostname lines in etc hosts file for Monsoon/CCloud
+  lineinfile: dest=/etc/hosts regexp='.+{{ ansible_hostname }}.+' state=absent
+
+- name: Insert ip with fqdn in etc hosts file for Monsoon/CCloud
+  lineinfile: dest=/etc/hosts line="{{ ansible_default_ipv4.address }} {{ host_fqdn }} {{ ansible_hostname }}"

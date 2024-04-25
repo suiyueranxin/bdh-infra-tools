@@ -1,0 +1,68 @@
+---
+- name: Create installer workspace
+  file: path="{{installer_workspace}}" state=directory
+  tags:
+    - install
+    - update
+
+- name: Remove the old vora package
+  file: path="{{installer_workspace}}/vora.tar.gz" state=absent
+  tags:
+    - install
+    - update
+
+- name: Get old SAPDataHub-Foundation folder name if exists
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder
+  tags:
+    - install
+    - update
+
+- name: Remove the old SAPDataHub-Foundation folder
+  file: path="{{item.path}}" state=absent
+  with_items: "{{distributed_runtime_folder.files}}"
+  tags:
+    - install
+    - update
+
+- name: Copy Local Vora Package
+  copy: src={{ vora_kubernetes_local_pkg }} dest="{{installer_workspace}}/vora.tar.gz"
+  when: vora_kubernetes_local_pkg is defined
+  tags:
+    - install
+    - update
+
+# TODO the SAP might not be reachable from the masters[0] node depending on the infrastructure
+# We need to download to the workstation and copy it to the masters[0], as we do
+# for the spark extension installer
+- name: Unarchive Vora installer from local package at {{installer_workspace}}/vora.tar.gz to {{installer_workspace}}/
+  unarchive:
+    src: "{{installer_workspace}}/vora.tar.gz" 
+    dest: "{{installer_workspace}}/" 
+    copy: no
+  when: vora_kubernetes_local_pkg is defined
+  register: unarchive_result
+  until: unarchive_result.msg is not defined
+  retries: 2
+  delay: 10
+  tags:
+    - install
+    - update
+
+- name: Unarchive Vora installer from url {{ vora_kube_download_url }} to {{installer_workspace}}/
+  unarchive:
+    src: "{{ vora_kube_download_url }}"
+    dest: "{{installer_workspace}}/"
+    remote_src: yes
+  when: vora_kubernetes_local_pkg is not defined
+  register: unarchive_result
+  until: unarchive_result.msg is not defined
+  retries: 2
+  delay: 10
+  tags:
+    - install
+    - update
+

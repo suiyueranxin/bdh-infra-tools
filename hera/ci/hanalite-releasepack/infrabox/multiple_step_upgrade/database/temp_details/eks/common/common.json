@@ -1,0 +1,161 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "type": "docker",
+            "name": "k8s_creation_upgrade_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "timeout": 12600,
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "MAX_ERROR_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "10800",
+                "MAX_READY_WAIT": "5400",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_CREATE_RETRY_NUM": "3",
+                "UPGRADE_TEST": "yes"
+            },
+            "build_only": false,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "type": "docker",
+            "name": "system_upgrade_<INDEX>_test_eks",
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 16384
+                }
+            },
+            "timeout": 10800,
+            "build_only": false,
+            "docker_file": "common/dockerfiles/ansible_runtime_eks",
+            "security_context": {
+                "privileged": true
+            },
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "INSTALL_VIA_SLCB": "true",
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade",
+                "K8S_CREATION_JOB": "k8s_creation_upgrade_eks",
+                "PARENT_INSTALL_JOB": "k8s_creation_upgrade_eks",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "JOB_ACTION": "Upgrade",
+                "ENABLE_AUTHENTICATION": "no",
+                "SKIP_VSYSTEM_ASSEMBLY": "yes",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "FTPENABLE": "FALSE",
+                "VORA_COMMAND": "update",
+                "FTPHOST": "10.47.221.67",
+                "FTPUSER": "infrabox_user",
+                "FTPPASS": "Sapvora123",
+                "EXPOSE_PORT": "yes"
+            }
+        },
+        {
+            "type": "docker",
+            "name": "k8s_upgrade_test_eks",
+            "timeout": 7200,
+            "build_only": false,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_upgrade/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "environment": {
+                "PARENT_INSTALL_JOB": "system_upgrade_<INDEX>_test_eks",
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade",
+                "K8S_CREATION_JOB": "k8s_creation_upgrade_eks",
+                "K8S_VERSION_UPGRADE_TO": "1.25",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "UPGRADE_TYPE": "k8s",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls="
+            }
+        },
+        {
+            "type": "docker",
+            "name": "log_collection_upgrade_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "system_upgrade_<INDEX>_test_eks",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "type": "docker",
+            "name": "k8s_deletion_upgrade_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "build_only": false,
+            "timeout": 10800,
+            "environment": {
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_upgrade_eks",
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "type": "docker",
+            "name": "job_report_upgrade_eks",
+            "timeout": 7200,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "environment": {
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "MILESTONE_VALIDATION_upgrade",
+                "K8S_CREATION_JOB": "k8s_creation_upgrade_eks",
+                "PARENT_INSTALL_JOB": "system_upgrade_<INDEX>_test_eks",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FULL_PLATFORM": "aks,eks,gke",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "DEPLOY_TYPE": "on_premise",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            }
+        }
+    ]
+}

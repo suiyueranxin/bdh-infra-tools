@@ -1,0 +1,22 @@
+platform: {{cloud_platform}}
+gardener aws region: {{gardener_aws_region}}
+gardener aws storage bucket name: tofill
+{% if k8s_version is defined %}
+kubernetes version: {{k8s_version}}
+{% endif %}
+kubernetes dashboard url: https://api.{{gardener_shoot_name}}.{{gardener_project_name}}.{{gardener_dns_zone}}/ui
+kubernetes dashboard user: admin
+kubernetes dashboard password: {{dashboard_password}}
+datahub version: {{vorapkg_version}}
+datahub namespace: {{vora_kube_namespace}}
+{% if expose_vsystem == "yes" %}
+datahub launch-pad endpoint: https://vsystem.ingress.{{gardener_shoot_name}}.{{gardener_project_name}}.{{gardener_dns_zone}} 
+{% endif %}
+datahub user tenant name: default
+datahub system tenant name: system
+datahub user/system tenant user: {{vora_username}}
+datahub user tenant password: {{vora_password}}
+datahub system tenant password: {{vora_system_tenant_password}}
+{% if vora_kubernetes_local_pkg is not defined %}
+datahub package url: {{vora_kube_download_url}}
+{% endif %}

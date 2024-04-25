@@ -1,0 +1,59 @@
+---
+- name: Set k8s get pods and delete namespace command
+  set_fact:
+    get_pods_cmd: "kubectl get pods -n {{vora_kube_namespace}} --show-all"
+    del_pods_cmd: "kubectl delete pods -n {{vora_kube_namespace}} --all --grace-period=0 --force"
+    del_namespace_cmd: "kubectl delete namespace {{vora_kube_namespace}}"
+  tags:
+    - cleanup
+
+- name: delete the pods left behind
+  shell: "{{ del_pods_cmd }}"
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - cleanup
+
+- name: wait until all pods are removed
+  shell: "{{get_pods_cmd}}"
+  environment:
+    "{{ installer_env }}"
+  register: "pods_left_behind"
+  until: pods_left_behind.stdout == ""
+  retries: 3
+  delay: 10
+  ignore_errors: yes
+  tags:
+    - cleanup
+
+- name: Delete namespace
+  shell: "{{del_namespace_cmd}}"
+  environment:
+    "{{ installer_env }}"
+  tags:
+    - cleanup
+
+- name: Get SAPDataHub-Foundation folder name
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder
+  tags:
+    - cleanup
+
+
+- name: Delete files and folders
+  file: path="{{ item }}" state=absent
+  ignore_errors: yes
+  with_items:
+    - "{{installer_workspace}}/vora.tar.gz"
+    - "{{distributed_runtime_folder.files[0].path}}"
+  tags:
+    - cleanup
+
+- name: Fail if uninstallation failed
+  assert: { that: "uninstall_result.rc == 0" }
+  tags:
+    - uninstall
+

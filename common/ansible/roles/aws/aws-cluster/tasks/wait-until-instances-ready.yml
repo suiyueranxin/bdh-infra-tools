@@ -1,0 +1,9 @@
+---
+- name: Wait until SSH is available from master
+  wait_for:
+    host: "{{ item.public_ip }}"
+    port: 22
+    delay: 60
+    timeout: 320
+    state: started
+  with_items: "{{ machines }}"

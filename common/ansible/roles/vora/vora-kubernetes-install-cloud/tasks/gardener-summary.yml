@@ -1,0 +1,7 @@
+- name: generate summary file for vora installed on gardener
+  template:
+    src: gardener_summary.yaml.j2
+    dest: "{{ playbook_dir }}/summary.log"
+  tags:
+    - install
+    - update

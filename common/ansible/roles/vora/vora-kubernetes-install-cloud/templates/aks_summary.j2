@@ -1,0 +1,31 @@
+platform: {{cloud_platform}}
+{% if azure_resource_group is defined %}
+azure resource group: {{azure_resource_group}}
+{% endif %}
+{% if aks_docker_install_registry is defined %}
+azure container registry address: {{ aks_docker_install_registry }}
+{% endif %}
+{% if azure_docker_login_username.stdout is defined %}
+azure container registry username: {{azure_docker_login_username.stdout}}
+{% endif %}
+{% if azure_docker_login_password.stdout is defined %}
+azure container registry password: {{azure_docker_login_password.stdout}}
+{% endif %}
+{% if k8s_version is defined %}
+kubernetes version: {{k8s_version}}
+{% endif %}
+{% if di_backup_path_prefix is defined %}
+di backup path prefix: {{di_backup_path_prefix}}
+{% endif %}
+datahub version: {{vorapkg_version}}
+datahub namespace: {{vora_kube_namespace}}
+datahub launch-pad endpoint: {{vsystem_entry}}
+datahub user tenant name: default
+datahub system tenant name: system
+datahub user/system tenant user: {{vora_username}}
+datahub user tenant password: {{vora_password}}
+datahub system tenant password: {{vora_system_tenant_password}}
+docker login cmd: docker login -u {{ azure_docker_login_username }} -p {{ azure_docker_login_password }} https://{{ aks_docker_install_registry }}
+{% if vora_kubernetes_local_pkg is not defined %}
+datahub package url: {{vora_kube_download_url}}
+{% endif %}

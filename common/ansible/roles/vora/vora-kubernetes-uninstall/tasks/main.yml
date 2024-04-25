@@ -1,0 +1,29 @@
+---
+- name: ref the aws security info if it hide in security file
+  include_vars:
+    file: "{{role_path}}/../vora-kubernetes-install-cloud/tasks/security-info.yml"
+  when: security_json_file is defined and security_json_file != ""
+  tags:
+    - install
+    - update
+
+- include: set-uninstall-cmd-monsoon.yml
+  when: cloud_platform is not defined
+
+- include: set-uninstall-cmd-azure.yml
+  when: cloud_platform is defined and (cloud_platform == "azure" or cloud_platform == "azure-aks")
+
+- include: set-uninstall-cmd-gke.yml
+  when: cloud_platform is defined and cloud_platform == "gke"
+
+- include: set-uninstall-cmd-kops.yml
+  when: cloud_platform is defined and cloud_platform == "kops"
+
+- include: set-uninstall-cmd-gardener-aws.yml
+  when: cloud_platform is defined and cloud_platform == "gardener-aws"
+
+- include: set-uninstall-cmd-eks.yml
+  when: cloud_platform is defined and cloud_platform == "eks"
+
+- include: uninstall-vora.yml
+- include: cleanup.yml

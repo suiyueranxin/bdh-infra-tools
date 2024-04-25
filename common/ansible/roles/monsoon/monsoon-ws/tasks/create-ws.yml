@@ -1,0 +1,25 @@
+---
+- name: Create ws machine on Monsoon
+  ec2:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    zone: "{{ monsoon_zone }}"
+    image: "{{ ws_image }}"
+    instance_type: "{{ ws_instance_type }}"
+    count: 1 # Only single master supported for now
+    wait: yes # we are going to wait for workers and also wait until ssh is ready.
+    wait_timeout: 1000
+    validate_certs: no
+    user_data: "#!/bin/bash\nmkdir -p /root/.ssh\ncat>>/root/.ssh/authorized_keys<<EOF\n{{ lookup('file', 'id_rsa.pub') }}\n"
+    instance_tags:
+      Name: "{{ ws_name }}"
+  register: created_ws
+
+- name: Set created_ws as fact for inventory file template
+  set_fact:
+    ws_instance: "{{ created_ws.instances }}"
+
+- name: Debug ws_instance
+  debug: var=ws_instance
+

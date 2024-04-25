@@ -1,0 +1,259 @@
+{
+  "version": 1,
+  "jobs": [
+      {
+          "name": "mirror_docker_image",
+          "docker_file": "hera/ci/hanalite-releasepack/infrabox/mirror_docker_image/Dockerfile",
+          "timeout": 10800,
+          "build_only": false,
+          "environment": {
+              "USE_FOR": "PUSH_VALIDATION",
+              "AWS_SECRET_ACCESS_KEY": {
+                  "$secret": "AWS_SECRET_ACCESS_KEY"
+              },
+              "AWS_ACCESS_KEY_ID": {
+                  "$secret": "AWS_ACCESS_KEY_ID"
+              }
+          },
+          "build_context": "../",
+          "security_context": {
+              "privileged": true
+          },
+          "type": "docker",
+          "resources": {
+              "limits": {
+                  "cpu": 2,
+                  "memory": 2048
+              }
+          }
+      },
+      {
+          "name": "dhaas_creation_dhaas_aws",
+          "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+          "depends_on": [
+              {
+                  "on": [
+                      "finished"
+                  ],
+                  "job": "mirror_docker_image"
+              }
+          ],
+          "build_only": false,
+          "environment": {
+              "MAX_ERROR_RETRY_NUM": "3",
+              "PROVISION_PLATFORM": "DHAAS-AWS",
+              "SYS_ACCOUNT": "system",
+              "MAX_READY_WAIT": "7200",
+              "CREATE_TOTAL_TIMEOUT": "21600",
+              "MAX_REFUSE_WAIT": "14400",
+              "SERVER_URL": "https://im-api.datahub.only.sap",
+              "MAX_CREATE_RETRY_NUM": "3",
+              "SYS_PASSWORD": "@AHD90G2s3yls=",
+              "USE_FOR": "PUSH_VALIDATION"
+          },
+          "build_context": "../",
+          "timeout": 12600,
+          "type": "docker",
+          "resources": {
+              "limits": {
+                  "cpu": 2,
+                  "memory": 2048
+              }
+          }
+      },
+      {
+          "name": "voratools_test_dhaas_aws",
+          "docker_file": "hera/ci/hanalite-releasepack/infrabox/voratools_test/Dockerfile",
+          "depends_on": [
+              {
+                  "on": [
+                      "finished"
+                  ],
+                  "job": "dhaas_creation_dhaas_aws"
+              }
+          ],
+          "build_only": false,
+          "environment": {
+              "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws"
+          },
+          "build_context": "../",
+          "type": "docker",
+          "resources": {
+              "limits": {
+                  "cpu": 1,
+                  "memory": 1024
+              }
+          }
+      },
+      {
+          "build_arguments": {
+              "SCRIPT_WORKSPACE": "fulcrum",
+              "KUBECTL_CLI_VERSION": "1.10.3"
+          },
+          "name": "vora_license_manager_test_dhaas_aws",
+          "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+          "depends_on": [
+              {
+                  "on": [
+                      "finished"
+                  ],
+                  "job": "dhaas_creation_dhaas_aws"
+              }
+          ],
+          "build_only": false,
+          "environment": {
+              "COMPONENT": "LICENSE_MANAGER",
+              "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/test-vora-license-manager",
+              "COMPONENT_TEST_NAME": "vora_license_manager_test",
+              "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws"
+          },
+          "build_context": "../",
+          "security_context": {
+              "privileged": true
+          },
+          "type": "docker",
+          "resources": {
+              "limits": {
+                  "cpu": 1,
+                  "memory": 1024
+              }
+          }
+      },
+      {
+          "name": "log_collection_dhaas_aws",
+          "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+          "depends_on": [
+              {
+                  "on": [
+                      "finished"
+                  ],
+                  "job": "dhaas_creation_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "voratools_test_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "vora_license_manager_test_dhaas_aws"
+              }
+          ],
+          "build_only": false,
+          "environment": {
+              "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws"
+          },
+          "build_context": "../",
+          "type": "docker",
+          "resources": {
+              "limits": {
+                  "cpu": 1,
+                  "memory": 1024
+              }
+          }
+      },
+      {
+          "name": "dhaas_deletion_dhaas_aws",
+          "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+          "depends_on": [
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "dhaas_creation_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "log_collection_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "voratools_test_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "vora_license_manager_test_dhaas_aws"
+              }
+          ],
+          "build_only": false,
+          "environment": {
+              "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+              "SERVER_URL": "https://im-api.datahub.only.sap"
+          },
+          "build_context": "../",
+          "timeout": 10800,
+          "type": "docker",
+          "resources": {
+              "limits": {
+                  "cpu": 1,
+                  "memory": 1024
+              }
+          }
+      },
+      {
+          "name": "job_report_dhaas_aws",
+          "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+          "depends_on": [
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "dhaas_deletion_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "dhaas_creation_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "log_collection_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "voratools_test_dhaas_aws"
+              },
+              {
+                  "on": [
+                      "*"
+                  ],
+                  "job": "vora_license_manager_test_dhaas_aws"
+              }
+          ],
+          "build_only": false,
+          "environment": {
+              "DEFAULT_RECEIVERS": "edward.wang@sap.com",
+              "RESTAPI_PORT": "30711",
+              "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+              "RESTAPI_PATH": "/api/v1/trd/insert",
+              "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws",
+              "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+              "USE_FOR": "PUSH_VALIDATION",
+              "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap"
+          },
+          "build_context": "../",
+          "timeout": 7200,
+          "type": "docker",
+          "resources": {
+              "limits": {
+                  "cpu": 1,
+                  "memory": 1024
+              }
+          }
+      }
+  ]
+}

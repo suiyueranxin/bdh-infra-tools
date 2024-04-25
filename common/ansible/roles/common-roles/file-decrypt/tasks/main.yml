@@ -1,0 +1,13 @@
+---
+- name: decrypt the encrypted file at "{{ encrypted_file_path }}"
+  instance_token:
+    request_type: "decode_str"
+    key_string: "SapVorainfraTeam"
+    token_string: "{{ lookup('file', '{{ encrypted_file_path }}') }}"
+  register: result_api_token
+
+- name: save the decryption file at local folder
+  copy:
+    content: "{{ result_api_token.response }}"
+    dest: "{{ decryption_file_path }}"
+    force: yes

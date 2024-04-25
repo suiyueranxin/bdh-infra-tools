@@ -1,0 +1,14 @@
+---
+- set_fact:
+    kubernetes_master_host: "{{ hostvars[ groups['masters'][0]]['ansible_default_ipv4']['address'] }}"
+
+- name: get discovery token ca cert hash
+  shell: openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+  register: result_token
+  delegate_to: "{{ kubernetes_master_host }}"
+
+- debug:
+    msg: "source /etc/environment; kubeadm reset; kubeadm join --token {{ kubernetes_join_token }} {{ kubernetes_master_host }}:6443 --discovery-token-ca-cert-hash sha256:{{ result_token.stdout }}"
+
+- name: joining of worker
+  shell: source /etc/environment; kubeadm reset; kubeadm join --token {{ kubernetes_join_token }} {{ kubernetes_master_host }}:6443 --discovery-token-ca-cert-hash sha256:{{ result_token.stdout }}

@@ -1,0 +1,62 @@
+{
+    "default_receivers": "edward.wang@sap.com,max.zhang@sap.com,lily.ke@sap.com,lianjie.qin@sap.com,gianluca.de.lorenzo@sap.com,jing-tao.li@sap.com",
+    "component_receivers":
+    [
+        {
+            "name": "build",
+            "receivers": "gordon.gaumnitz@sap.com"
+        },{
+            "name": "install",
+            "receivers": "hasan.turken@sap.com"
+        },{
+            "name": "vystem_test",
+            "receivers": "luis.mollmann@sap.com,simon.seif@sap.com"
+        },{
+            "name": "deployment_operator_test",
+            "receivers": "jonathan.dees@sap.com,gordon.gaumnitz@sap.com"
+        },{
+            "name": "hanawire_test",
+            "receivers": "youssef.hatem@sap.com,yuting.lai@sap.com"
+        },{
+            "name": "vflow_test",
+            "receivers": "fernando.spaniol@sap.com"
+        },{
+            "name": "voratools_test",
+            "receivers": "reinhold.kautzleben@sap.com"
+        },{
+            "name": "vflow_authorization-scenario",
+            "receivers": "rodrigo.boos@sap.com"
+        },{
+            "name": "vflow_importer-scenario",
+            "receivers": "leo.moura@sap.com"
+        },{
+            "name": "vflow_data_transform_scenario_test",
+            "receivers": "aditya.sharma04@sap.com"
+        },{
+            "name": "sparkonk8s_test",
+            "receivers": "markus.rudy@sap.com,mark.waldaukat@sap.com"
+        },{
+            "name": "streaming_tables_test",
+            "receivers": "christian.krause01@sap.com"
+        },{
+            "name": "ui-test",
+            "receivers": "abhinandan.sahu@sap.com"
+        },{
+            "name": "app_test",
+            "receivers": "dennis.seah@sap.com"
+        },{
+            "name": "log_collection",
+            "receivers": "lily.ke@sap.com,edward.wang@sap.com"
+        },{
+            "name": "uninstall",
+            "receivers": "hasan.turken@sap.com"
+        }
+    ],
+    "platform_receivers":
+    [
+        {
+            "name": "aks",
+            "receivers": "mark.waldaukat@sap.com"
+        }
+    ]
+}

@@ -1,0 +1,4 @@
+{
+        "graph": "/docker-folder",
+        "insecure-registries":["di-dev-cicd-docker.int.repositories.cloud.sap", "registry-backup.datahub.only.sap", "docker.wdf.sap.corp:51088", "docker.wdf.sap.corp:51022", "public.int.repositories.cloud.sap", "docker.wdf.sap.corp:51055" ]
+}

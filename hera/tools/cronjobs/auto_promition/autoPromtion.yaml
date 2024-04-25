@@ -1,0 +1,17 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: bdh-infra-auto-notification
+  namespace: bdh-dashboard
+spec:
+  schedule: "00 00 * * *"
+  successfulJobsHistoryLimit: 3
+  suspend: false
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: auto-notification
+            image: di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/auto_notification:v1
+          restartPolicy: OnFailure

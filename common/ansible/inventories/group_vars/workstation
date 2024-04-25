@@ -1,0 +1,49 @@
+### configuring the used HW provider ###
+########################################
+
+# Cluster Zone setting:
+# select, which kind of infrastructure provider is applicable for you
+#   rot_1, rot_2  -> Monsoon region europe, DC Rot, Germany
+#   wdf_1         -> Monsoon region europe, DC Walldorf, Germany,
+#   phl_1         -> Monsoon region us_east, DC Philadelphia, USA
+#   sc_1          -> Monsoon region us_west, DC Santa Clara, USA
+#   eu-central-1a -> AWS region eu-central-1, DC Frankfurt, Germany
+#   eu-west-1a    -> AWS region eu-central-1, Ireland
+#   docker        -> docker cluster
+#   cc-eu-de-1    -> ccloud, region eu-de-1, DC Rot, Germany
+cluster_zone: rot_2
+
+# Monsoon or AWS credentials
+# for Monsoon or AWS, you need 2 keys, i.e. access key and secret key.
+# - Monsoon go to your monsoon project, then Settings -> API -> AWS API keys
+# - AWS: Dashboard -> Users -> your user -> Access keys
+aws_access_key: 
+aws_secret_key: 
+
+# see:
+# https://monsoon.mo.sap.corp/docs/compute/availabilityzones/
+# https://monsoon.mo.sap.corp/docs/compute/api/#ec2end
+
+# Datacenter Europe (Rot, Wdf). Supported zones are: rot_1, rot_2, wdf_1
+monsoon_region: europe
+monsoon_zone: rot_2
+ec2_endpoint_url: https://ec2-{{ monsoon_region }}.api.monsoon.mo.sap.corp
+
+
+# Datacenter US Philadelphia
+#monsoon_region: us_east
+#monsoon_zone: phl_1
+#ec2_endpoint_url: https://ec2-us-east.api.monsoon.mo.sap.corp
+
+
+# Datacenter US Santa Clara
+#monsoon_region: us_west
+#monsoon_zone: sc_1
+#ec2_endpoint_url: https://ec2-us-west.api.monsoon.mo.sap.corp
+
+# add following with default values when deploy token for cluster
+user_email: gao-zhi.wang@sap.com
+project_name: sap_vora_infra
+period: 1
+description: sap vora infra team testing
+

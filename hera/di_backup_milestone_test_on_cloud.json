@@ -1,0 +1,896 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "name": "ci_dashboard_registration",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ci_dashboard_milestone_registration:latest",
+            "repository": {
+                "full_history": true
+            },
+            "timeout": 2400,
+            "environment": {
+                "DEPLOY_TYPE": "on_cloud"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            }
+        },
+        {
+            "name": "dhaas_creation_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "MAX_ERROR_RETRY_NUM": "4",
+                "PROVISION_PLATFORM": "DHAAS-AWS",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "CREATE_TOTAL_TIMEOUT": "29400",
+                "MAX_READY_WAIT": "28800",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "MAX_CREATE_RETRY_NUM": "1",
+                "MAX_REFUSE_WAIT": "10800",
+                "K8S_VERSION": "1.24",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "timeout": 30600,
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "e2e_preparation_test_dhaas_aws",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_creation_dhaas_aws"
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "PREPARATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_preparation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "dh_test_server_GBQIM": {
+                    "$secret": "dh_test_server_GBQIM"
+                },
+                "dh_test_server_HDL_FILES": {
+                    "$secret": "dh_test_server_HDL_FILES"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "dhaas_backup_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "MAX_ERROR_RETRY_NUM": "4",
+                "PROVISION_PLATFORM": "DHAAS-AWS",
+                "JOB_ACTION": "Backup",
+                "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws",
+                "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_creation_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_dhaas_aws"
+                }
+            ],
+            "timeout": 30600,
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "dhaas_restore_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "MAX_ERROR_RETRY_NUM": "4",
+                "PROVISION_PLATFORM": "DHAAS-AWS",
+                "JOB_ACTION": "Restore",
+                "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws",
+                "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+                "MAX_READY_WAIT": "28800",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_creation_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_backup_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_dhaas_aws"
+                }
+            ],
+            "timeout": 30600,
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_test_dhaas_aws",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_creation_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_backup_dhaas_aws"
+                },
+                {
+                    "job": "dhaas_restore_dhaas_aws",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "VALIDATION",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "dhaas_restore_dhaas_aws",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "dh_test_server_GBQIM": {
+                    "$secret": "dh_test_server_GBQIM"
+                },
+                "dh_test_server_HDL_FILES": {
+                    "$secret": "dh_test_server_HDL_FILES"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "name": "e2e_validation_teardown_test_dhaas_aws",
+            "build_context": "../",
+            "type": "docker-image",
+            "image": "di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/bit-runtime:0.2",
+            "command": [
+                "bash",
+                "-c",
+                "/project/pre_check.sh && /docker_start.sh && /entrypoint.sh"
+            ],
+            "security_context": {
+                "privileged": true
+            },
+            "depends_on": [
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_creation_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_backup_dhaas_aws"
+                },
+                {
+                    "job": "dhaas_restore_dhaas_aws",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "environment": {
+                "BACKUP_RESTORE_TEST": "TEARDOWN",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "PARENT_INSTALL_JOB": "dhaas_restore_dhaas_aws",
+                "MAX_RUN": "1",
+                "CLOUD_ONLY": "1",
+                "COMPONENT": "RELEASEPACK",
+                "COMPONENT_TEST_NAME": "e2e_validation_teardown_test",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/di-e2e-test",
+                "dh_test_server_S3": {
+                    "$secret": "dh_test_server_S3"
+                },
+                "dh_test_server_ADL": {
+                    "$secret": "dh_test_server_ADL"
+                },
+                "dh_test_server_DB2": {
+                    "$secret": "dh_test_server_DB2"
+                },
+                "dh_test_server_GBQ": {
+                    "$secret": "dh_test_server_GBQ"
+                },
+                "dh_test_server_WASB": {
+                    "$secret": "dh_test_server_WASB"
+                },
+                "dh_test_server_HANA_BW": {
+                    "$secret": "dh_test_server_HANA_BW"
+                },
+                "dh_test_server_DATASERVICES": {
+                    "$secret": "dh_test_server_DATASERVICES"
+                },
+                "dh_test_server_OCN": {
+                    "$secret": "dh_test_server_OCN"
+                },
+                "dh_test_server_SAPIQ": {
+                    "$secret": "dh_test_server_SAPIQ"
+                },
+                "dh_test_server_OCN_SF": {
+                    "$secret": "dh_test_server_OCN_SF"
+                },
+                "dh_test_server_ABAP_UK": {
+                    "$secret": "dh_test_server_ABAP_UK"
+                },
+                "dh_test_server_ABAP_GC1_RFC": {
+                    "$secret": "dh_test_server_ABAP_GC1_RFC"
+                },
+                "dh_test_server_CDI": {
+                    "$secret": "dh_test_server_CDI"
+                },
+                "dh_test_server_HANA_CDI": {
+                    "$secret": "dh_test_server_HANA_CDI"
+                },
+                "dh_test_server_ABAP_GCX_RFC": {
+                    "$secret": "dh_test_server_ABAP_GCX_RFC"
+                },
+                "dh_salesforce_openapi": {
+                    "$secret": "dh_salesforce_openapi"
+                },
+                "dh_test_server_ADLV2": {
+                    "$secret": "dh_test_server_ADLV2"
+                },
+                "dh_test_server_COLGATE_ODATA": {
+                    "$secret": "dh_test_server_COLGATE_ODATA"
+                },
+                "dh_test_server_AZURE_SQL": {
+                    "$secret": "dh_test_server_AZURE_SQL"
+                },
+                "dh_test_server_REDSHIFT": {
+                    "$secret": "dh_test_server_REDSHIFT"
+                },
+                "dh_test_server_OPENAPI": {
+                    "$secret": "dh_test_server_OPENAPI"
+                },
+                "dh_test_server_OSS": {
+                    "$secret": "dh_test_server_OSS"
+                },
+                "dh_test_server_ABAP_GC1_HTTPS": {
+                    "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+                },
+                "dh_test_server_CPEM": {
+                    "$secret": "dh_test_server_CPEM"
+                },
+                "dh_test_server_ODATA_HANA": {
+                    "$secret": "dh_test_server_ODATA_HANA"
+                },
+                "dh_test_server_ODATA_SF": {
+                    "$secret": "dh_test_server_ODATA_SF"
+                },
+                "dh_test_server_SDL_S3": {
+                    "$secret": "dh_test_server_SDL_S3"
+                },
+                "dh_test_server_SDL_ADLV2": {
+                    "$secret": "dh_test_server_SDL_ADLV2"
+                },
+                "dh_test_server_SDL_WASB": {
+                    "$secret": "dh_test_server_SDL_WASB"
+                },
+                "dh_test_server_SDL_OSS": {
+                    "$secret": "dh_test_server_SDL_OSS"
+                },
+                "dh_test_server_IS": {
+                    "$secret": "dh_test_server_IS"
+                },
+                "dh_test_server_HDL_DB": {
+                    "$secret": "dh_test_server_HDL_DB"
+                },
+                "dh_test_server_SNOWFLAKE": {
+                    "$secret": "dh_test_server_SNOWFLAKE"
+                },
+                "dh_test_server_GBQIM": {
+                    "$secret": "dh_test_server_GBQIM"
+                },
+                "dh_test_server_HDL_FILES": {
+                    "$secret": "dh_test_server_HDL_FILES"
+                },
+                "IM_TOKEN": {
+                    "$secret": "IM_TOKEN"
+                }
+            },
+            "timeout": 21600,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            }
+        },
+        {
+            "type": "docker",
+            "name": "log_collection_backup_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "environment": {
+                "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "dhaas_creation_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_dhaas_aws"
+                },
+                {
+                    "job": "dhaas_restore_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "dhaas_backup_dhaas_aws"
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "dhaas_deletion_created_cluster_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "timeout": 10800,
+            "environment": {
+                "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "dhaas_creation_dhaas_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_backup_dhaas_aws"
+                },
+                {
+                    "job": "dhaas_restore_dhaas_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "dhaas_deletion_restored_cluster_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "build_only": false,
+            "build_context": "../",
+            "timeout": 10800,
+            "environment": {
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "dhaas_restore_dhaas_aws",
+                "USE_FOR": "MILESTONE_VALIDATION_backup"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "dhaas_creation_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "finished"
+                    ],
+                    "job": "dhaas_backup_dhaas_aws"
+                },
+                {
+                    "job": "dhaas_restore_dhaas_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "job_report_backup_restore_dhaas_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "build_context": "../",
+            "depends_on": [
+                {
+                    "job": "dhaas_deletion_restored_cluster_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_preparation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_test_dhaas_aws"
+                },
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "e2e_validation_teardown_test_dhaas_aws"
+                },
+                {
+                    "job": "dhaas_deletion_created_cluster_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "dhaas_creation_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "dhaas_backup_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "dhaas_restore_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_backup_dhaas_aws",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "environment": {
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "MILESTONE_VALIDATION_backup",
+                "FULL_PLATFORM": "dhaas_aws",
+                "DEPLOY_TYPE": "on_cloud",
+                "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+                "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            }
+        }
+    ]
+}

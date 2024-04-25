@@ -1,0 +1,15 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+
+[masters]
+name={{ azure_cluster_vars.service_master_name }}
+
+[all:vars]
+cluster_provider=azure
+master_name={{ azure_cluster_vars.service_master_name }}
+azure_resource_group={{ azure_cluster_vars.resource_group_name }}
+azure_registry_name={{ azure_cluster_vars.container_name }}
+azure_container_service_name={{ azure_cluster_vars.service_name }}

@@ -1,0 +1,63 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "kopsK8sEC2NodePerms",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeInstances",
+                "ec2:DescribeRegions"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Sid": "kopsK8sS3GetListBucket",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketLocation",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}"
+            ]
+        },
+        {
+            "Sid": "kopsK8sS3NodeBucketSelectiveGet",
+            "Effect": "Allow",
+            "Action": [
+                "s3:Get*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/addons/*",
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/cluster.spec",
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/config",
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/instancegroup/*",
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/pki/issued/*",
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/pki/private/kube-proxy/*",
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/pki/private/kubelet/*",
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/pki/ssh/*",
+                "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/secrets/dockerconfig"
+            ]
+        },
+        {
+            "Sid": "kopsK8sS3NodeBucketGetCalicoClient",
+            "Effect": "Allow",
+            "Action": [
+                "s3:Get*"
+            ],
+            "Resource": "arn:aws:s3:::{{kops_k8s_cluster_name}}/{{kops_k8s_cluster_name}}.{{kops_dns_zone}}/pki/private/calico-client/*"
+        },
+        {
+            "Sid": "kopsK8sECR",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:*"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}

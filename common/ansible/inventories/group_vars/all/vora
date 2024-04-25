@@ -1,0 +1,39 @@
+
+########## Vora Installation ##########
+# You can specify the patch version with a string containing * or ? to
+# automatically fetch the latest version matching the pattern
+SAPHanaVora_version:
+  major: 2
+  minor: 3  # please keep it as int since it is used for int comparison
+  patch: 9
+  artifact: "0"
+
+# If artifact is '0' then version format is x.x.x
+# If artifact is a string other than '0', version format is x.x.x."string"
+vorapkg_version: "{{ SAPHanaVora_version.major }}.{{ SAPHanaVora_version.minor }}.{{ SAPHanaVora_version.patch }}{% if SAPHanaVora_version.artifact != '0' %}.{{ SAPHanaVora_version.artifact }}{% else %}{% endif %}"
+
+vsystem_pkg_version: "1.4.3"
+
+install_vora: true
+use_vora_installer: false
+vora_manager_gui_port: 19443
+vora_manager_http_port: 19000
+
+vora_username: system
+
+vora_services_log_level: DEBUG
+vora_installation_log: vora_installation.log
+vora_uninstall_log: vora_uninstall.log
+
+#spark_extensions_local_pkg: /path/to/local/spark_installer.tar.gz
+
+# Vora Configuration
+vora_conf_home: /etc/vora
+vora_uid: 44936
+vora_gid: 44936
+vora_reinstall: false
+
+######### Other Vora Related Services #######################################
+
+setup_hana_secure_store_scenario: false
+

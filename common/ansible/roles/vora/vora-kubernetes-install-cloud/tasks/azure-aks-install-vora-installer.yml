@@ -1,0 +1,228 @@
+---
+- name: Get SAPDataHub-Foundation folder name
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder
+  tags:
+    - install
+    - update
+
+- name: set installer path
+  set_fact:
+    installer_path: "{{distributed_runtime_folder.files[0].path}}"
+  tags:
+    - install
+    - update
+
+- name: Set cert domain
+  set_fact:
+    cert_args: "--cert-domain={{ cert_domain }}"
+  tags:
+    - install
+    - update
+
+- name: configure vflow azure registry
+  set_fact:
+    vflow_azure_registry_option: "--vflow-registry={{ azure_vflow_registry_name }}.azurecr.io"
+  when: azure_vflow_registry_name is defined and azure_vflow_resource_group is defined
+  tags:
+    - install
+    - update
+
+- name: set default args for one node installation
+  set_fact:
+    cmd_vora_install_one_node_options: " "
+  tags:
+    - install
+    - update
+
+- name: set args for one node installation
+  set_fact:
+    cmd_vora_install_one_node_options: " -e=vora-cluster.components.dlog.replicationFactor=1 -e=vora-cluster.components.dlog.standbyFactor=0 "
+  when: bdh_one_node_installation == "yes"
+  tags:
+    - install
+    - update
+
+- include: common-install-parameters.yml
+- name: set some variable
+  set_fact:
+    cmd_vora_install: "{{installer_common_cmd}} {{vflow_azure_registry_option}} \
+                       --docker-registry={{ acr_name }}.azurecr.io \
+                       --enable-checkpoint-store=no \
+                       --checkpoint-store-type=adl \
+                       --checkpoint-store-connection=\"{{adl_url}}\" \
+                       --validate-checkpoint-store=yes \
+                       --extra-arg=vora-cluster.components.txCoordinator.serviceType=AzureInternalLoadBalancer \
+                       {{cert_args}} \
+                       {{cmd_vora_install_one_node_options}} \
+                       {{install_flag}}"
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: login az cli
+  shell: "az login --service-principal --username {{ client_id }} --password {{ client_secret }} --tenant {{ tenant }}"
+  tags:
+    - install
+    - update
+
+- name: set subscription id
+  shell: "az account set --subscription {{ subscription_id }}"
+  tags:
+    - install
+    - update
+
+- name: azure docker registry login
+  shell: "az acr login -n {{ acr_name }}"
+  tags:
+    - install
+    - update
+
+- name: azure docker registry login for vflow regsitry
+  shell: "az acr login -n {{ azure_vflow_registry_name }}"
+  when: azure_vflow_registry_name is defined and azure_vflow_resource_group is defined
+  tags:
+    - install
+    - update
+
+- name: set up refresh token cron job each 1 hour
+  cron:
+    name: "refresh acr token"
+    special_time: "hourly"
+    job: "az login --service-principal --username {{ client_id }} --password {{ client_secret }} --tenant {{ tenant }} && \
+          az account set --subscription {{ subscription_id }} && \
+          az acr login -n {{ acr_name }}"
+  when: azure_vflow_registry_name is undefined
+  tags:
+    - install
+    - update
+
+- name: set up refresh token cron job each 1 hour with vflow registry
+  cron:
+    name: "refresh acr token"
+    special_time: "hourly"
+    job: "az login --service-principal --username {{ client_id }} --password {{ client_secret }} --tenant {{ tenant }} && \
+          az account set --subscription {{ subscription_id }} && \
+          az acr login -n {{ acr_name }} && \
+          az acr login -n {{ azure_vflow_registry_name }}"
+  when: azure_vflow_registry_name is defined and azure_vflow_resource_group is defined
+  tags:
+    - install
+    - update
+
+- name: install vora on aks
+  shell: "./install.sh {{ cmd_vora_install }} 2>&1 | tee {{ playbook_dir }}/vora_installation.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  ignore_errors: true
+  register: installation_result
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: disable cron
+  cron:
+    name: "refresh acr token"
+    state: "absent"
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods logs directory
+    file: path="{{ installer_path }}/logs/podlogs" state=directory
+  - name: Collect current logs
+    shell: "{{ installer_path }}/tools/log_collector.py {{ installer_path }}/logs/podlogs --namespace {{ vora_kube_namespace }}"
+    environment:
+      "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods describe logs directory
+    file:
+      path: "{{ installer_path }}/logs/pod_des_logs"
+      state: directory
+  - name: save all pod describe log
+    shell: "python {{role_path}}/../vora-kubernetes-install/files/generate_pods_describe_log.py {{ vora_kube_namespace }} {{ installer_path }}/logs/pod_des_logs"
+    environment:
+        "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the logs folder
+  archive:
+    path: "{{ installer_path }}/logs"
+    dest: "{{ installer_workspace }}/{{ archive_logs }}"
+    format: zip
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_logs }}"
+    dest: "{{ archive_logs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the tools folder
+  archive:
+    path: "{{ installer_path }}/tools"
+    dest: "{{ installer_workspace }}/{{ archive_tools }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy tools to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_tools }}"
+    dest: "{{ archive_tools }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the certs folder
+  archive:
+    path: "{{ installer_path }}/deployment/certs"
+    dest: "{{ installer_workspace }}/{{ certs }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy certs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ certs }}"
+    dest: "{{ certs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: Fail if installation failed
+  assert: { that: "installation_result.rc == 0 and installation_result.changed == true" }
+  tags:
+    - install
+    - update
+

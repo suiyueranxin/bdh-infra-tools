@@ -1,0 +1,64 @@
+nfs_path: "/nfsfileshare"
+local_nfs_path: "/nfsfileshare"
+kube_admin_config_path: "/etc/kubernetes/admin.conf"
+
+#vora_flavor "BDH" enables vflow and text-analysis, set to empty string for "vora standalone"
+#vora_flavor: "BDH"
+kube_provision_persistent_volumes: "yes"
+vora_install_config_hana: "no"
+vora_install_config_hdfs: "no"
+enable_authentication: "no"
+enable_security_operator: "no"
+vora_username: system
+installer_workspace: /var
+vora_kube_namespace: vora
+cert_domain: vora.sap.com
+archive_logs: "install_logs_folder.zip"
+certs: "install_cert.tgz"
+#vora_kubernetes_local_pkg: /path/to/SAPVora-DistributedRuntime.tar.gz
+#vsystem_local_pkg: /path/to/bdh-assembly-vsystem.tar.gz
+
+sap_dh_bin_level: "milestone"
+vora_kube_prefix_url: 'https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub'
+vora_kube_suffix: 'Foundation'
+vora_kube_download_url: '{{vora_kube_prefix_url}}/{{ vorapkg_version }}/SAPDataHub-{{ vorapkg_version }}-{{ vora_kube_suffix }}.tar.gz'
+vsystem_download_url: 'https://int.repositories.cloud.sap/artifactory/build-milestones-xmake/com/sap/bdh/bdh-assembly-vsystem/{{ vsystem_pkg_version }}/bdh-assembly-vsystem-{{ vsystem_pkg_version }}.tar.gz'
+vora_install_deployment_type: cloud
+vora_install_textanalysis: false
+
+#the available values for services,one or more and splited by comma:
+#vora-operator,vora-security,vora-consul,vora-dqp,vora-tools,vora-thriftserver,vora-vsystem,vora-diagnostic,vora-textanalysis
+limit_services: ""
+skip_services: ""
+
+docker_artifactory: public.int.repositories.cloud.sap
+artifactory_login_opt: "1"
+artifactory_login_username: bdhdev-read-only
+artifactory_login_password: zU94Gq982Pn7uWvM
+
+adl_url: adl://bhdinfra.azuredatalakestore.net/
+rook_s3_url: http://rook-ceph-rgw-rook-store.rook/rookbucket
+
+hadoop_host: hadoop-hadoop-hdfs-nn-0.hadoop-hadoop-hdfs-nn.hadoop.svc.cluster.local:50070
+hdfs_url: "Proxy=noproxy&Username=root&Path=checkpoint&webhdfs://{{hadoop_host}}"
+enable_storage_checkpoint: "yes"
+hadoop_installed: no
+
+vsystem_use_external_auth: "no"
+images_save_path: "/var/images"
+dev_config_file_path: "/root/docker_image_config"
+hana_resources_requests_memory: "6Gi"
+hana_resources_limits_memory: "64Gi"
+enable_network_policies: "yes"
+enable_kaniko: " "
+
+expose_vsystem: "yes"
+expose_vora_txc: "no"
+expose_text_analysis: "no"
+
+minio_client_url: "https://dl.min.io/client/mc/release/linux-amd64/mc"
+minio_server: "http://example:30666"
+minio_access_key: "AKExample"
+minio_secret_key: "ENExample"
+minio_checkpoint_str: "Host={{minio_server}}&AccessKey={{minio_access_key}}&SecretAccessKey={{minio_secret_key}}&Path=checkpoints/{{on_premise_cluster_name}}"
+

@@ -1,0 +1,3 @@
+---
+- name: Assert if selected image is supported
+  assert: { that: "ws_image == 'UBUNTU1404-x86_64'" }

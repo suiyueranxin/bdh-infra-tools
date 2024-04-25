@@ -1,0 +1,20 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ansible-runtime-base:latest
+
+ARG ANSIBLE_WORKSPACE
+ARG SCRIPT_WORKSPACE
+
+RUN apt-get update && apt-get install -y ftp
+
+# Now copy auto deployment code
+COPY ${ANSIBLE_WORKSPACE}/ansible /ansible
+COPY ${SCRIPT_WORKSPACE}/script/bash/deployment_hana.sh /deployment_hana.sh
+COPY ${SCRIPT_WORKSPACE}/script/bash/docker_start.sh /docker_start.sh
+
+
+RUN  chmod 600 /ansible/id_rsa && \
+     chmod +x /docker_start.sh && \
+     chmod +x /deployment_hana.sh
+
+WORKDIR /ansible/
+
+ENTRYPOINT /docker_start.sh && /deployment_hana.sh

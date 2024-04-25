@@ -1,0 +1,8 @@
+---
+- include: assert-image.yml
+- include: create-ws.yml
+- include: create-inventory-file.yml
+- include: create-volumes.yml machines={{ ws_instance }}
+  when: monsoon_volume_size != 0
+- include: wait-until-instances-ready.yml machines={{ ws_instance }}
+

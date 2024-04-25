@@ -1,0 +1,4 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_ssh_base:1.0
+COPY common/script/bash/clone_bdh-infra-tools.sh /clone_bdh-infra-tools.sh
+RUN chmod +x /clone_bdh-infra-tools.sh
+ENTRYPOINT ["/clone_bdh-infra-tools.sh"]

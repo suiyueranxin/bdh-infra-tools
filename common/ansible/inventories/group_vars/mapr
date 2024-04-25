@@ -1,0 +1,24 @@
+mapr_user                 : mapr
+mapr_group                : mapr
+
+vora_local_dest           : /tmp/MapR_HANA_Vora
+
+
+
+#docker_image              : sles12sp1-with-python
+#docker_image              : centos72-with-python
+docker_image              : centos73-with-python
+#docker_image              : centos68-with-python
+#docker_image              : centos72-with-mapr
+
+mapr_spark_home           : /opt/mapr/spark/spark-1.6.1
+mapr_spark_conf_dir       : "{{ mapr_spark_home }}/conf"
+mapr_spark_conf_file      : "{{ mapr_spark_conf_dir }}/spark-defaults.conf"
+mapr_spark_env_file       : "{{ mapr_spark_conf_dir }}/spark-env.sh"
+mapr_cluster_conf         : "/opt/mapr/conf/mapr-clusters.conf"
+mapr_login_conf           : "/opt/mapr/conf/mapr.login.conf"
+
+mapr_service_control_sh   : /opt/mapr/vora/service-control.sh
+mapr_server_configure_sh  : /opt/mapr/server/configure.sh
+
+spark_home                : /opt/mapr/spark/spark-1.6.1

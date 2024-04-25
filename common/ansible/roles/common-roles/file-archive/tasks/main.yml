@@ -1,0 +1,3 @@
+- name: archive file from {{ item.path }} to {{ item.archive_path }}
+  archive: path={{ item.path }} dest={{ item.archive_path }} format=bz2
+  with_items: "{{ files }}"

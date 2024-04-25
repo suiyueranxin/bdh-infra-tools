@@ -1,0 +1,54 @@
+---
+- name: ref the aws security info if it hide in security file
+  include_vars:
+    file: security-info-eks.yml
+  when: security_json_file is defined and security_json_file != "" and cloud_platform == "eks"
+  tags:
+    - uninstall
+
+- name: ref the azure security info if it hide in security file
+  include_vars:
+    file: security-info-aks.yml
+  when: security_json_file is defined and security_json_file != "" and cloud_platform == "azure-aks"
+  tags:
+    - uninstall
+
+- name: Creates tmp directory
+  file:
+    path: "{{ role_path }}/files/tmp/"
+    state: directory
+  ignore_errors: yes
+  tags:
+    - uninstall
+  
+# - name: Download ssl cert from git repo
+#   get_url:
+#     url: https://github.wdf.sap.corp/raw/I310657/im_downloads/master/secret/cert/data-hub-cert-update/crt.pem
+#     dest: "{{ role_path }}/files/tmp/crt.pem"
+#   ignore_errors: yes
+#   tags:
+#     - uninstall
+  
+# - name: Download ssl key from git repo
+#   get_url:
+#     url: https://github.wdf.sap.corp/raw/I310657/im_downloads/master/secret/cert/data-hub-cert-update/key.pem
+#     dest: "{{ role_path }}/files/tmp/key.pem"
+#   ignore_errors: yes
+#   tags:
+#     - uninstall
+
+- block:
+    - include: gke-install-prepare.yml
+    - include: gke-uninstall-vora.yml
+  when: cloud_platform == "gke"
+
+- block:
+    - include: azure-helm-init.yml
+    - include: azure-aks-uninstall-vora.yml
+  when: cloud_platform == "azure-aks"
+
+- block:
+    - include: eks-docker-login.yml
+    - include: eks-prepare-k8s.yml
+    - include: eks-uninstall-vora.yml
+  when: cloud_platform == "eks"

@@ -1,0 +1,4 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_python_base:latest
+
+RUN pip install --upgrade pip python-dateutil
+

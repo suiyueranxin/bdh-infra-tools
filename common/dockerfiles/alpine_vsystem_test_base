@@ -1,0 +1,14 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_python_base:latest
+ARG VCTL_VERSION=2.7.80
+ARG GO_VERSION=1.13.3
+ARG KUBECTL_VEERSION=1.13.8
+RUN curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
+    tar -xf go${GO_VERSION}.linux-amd64.tar.gz && mv go /usr/local && rm -rf /go${GO_VERSION}.linux-amd64.tar.gz && \
+    mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
+
+RUN apk add --no-cache --update git python3 make build-base > /dev/null && \
+    pip3 install xmlrunner && \
+    curl -Ok https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/hana/hl/linuxx86_64/vsystem-client/${VCTL_VERSION}/vsystem-client-${VCTL_VERSION}-linuxx86_64.tar.gz && tar -xf vsystem-client-${VCTL_VERSION}-linuxx86_64.tar.gz && mv vctl /usr/local/bin
+
+
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VEERSION}/bin/linux/amd64/kubectl && chmod +x kubectl && cp kubectl /bin/kubectl

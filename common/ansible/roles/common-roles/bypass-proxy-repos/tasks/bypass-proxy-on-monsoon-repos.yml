@@ -1,0 +1,19 @@
+- name: Bypass proxy for yum repos for RHEL 6.x on Monsoon
+  lineinfile: dest=/etc/yum.repos.d/{{ item }} line="proxy=_none_" state=present
+  with_items:
+  - rhel-optional.repo
+  - rhel-os.repo
+  - rhel-source.repo
+  - rhel-updates.repo
+  - epel.repo
+  - vmware.repo
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "6"
+
+- name: Bypass proxy for yum repos for RHEL 7.x on Monsoon
+  lineinfile: dest=/etc/yum.repos.d/{{ item }} line="proxy=_none_" state=present
+  with_items:
+  - rhel-7-epel.repo
+  - rhel-7-server-extras-rpms.repo
+  - rhel-7-server-optional-rpms.repo
+  - rhel-7-server-rpms.repo
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"

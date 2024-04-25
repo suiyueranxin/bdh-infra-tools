@@ -1,0 +1,3 @@
+---
+- name: Create inventory file for Azure Hosts
+  template: src=azure_hosts.j2 dest={{ inventory_dir }}/azure_hosts

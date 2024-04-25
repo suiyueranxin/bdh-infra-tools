@@ -1,0 +1,43 @@
+{
+    "job_costs" : {
+        "generator" : "2",
+        "bdh-infra-tools" : "1",
+        "build" : "16" ,
+        "build_copy_files" : "7",
+        "dhaas_creation_dhaas_aws" : "88",
+        "dhaas_deletion_dhaas_aws" : "1",
+        "import_export_test_dhaas_aws" : "5",
+        "import_export_test_gke" : "11",
+        "install_gke" : "67",
+        "installer_unit_test_gke" : "3",
+        "job_report_dhaas_aws" : "2",
+        "job_report_gke" : "8",
+        "k8s_creation_gke" : "14",
+        "k8s_deletion_gke" : "2",
+        "log_collection_dhaas_aws" : "2",
+        "log_collection_gke" : "5",
+        "mirror_docker_image" : "23",
+        "vflow_test_gke" : "33",
+        "vora_license_manager_test_dhaas_aws" :  "5",
+        "vora_license_manager_test_gke" : "12",
+        "voratools_test_dhaas_aws" : "5",
+        "voratools_test_gke" : "9",
+        "build-installer" : "9",
+        "checkbot" : "4",
+        "vflow_flowagent_test_gke" : "78",
+        "hanalite_dqp_test_gke" : "66",
+        "job_report_upgrade_gke" : "3",
+        "k8s_creation_upgrade_gke" : "74",
+        "k8s_deletion_upgrade_gke" : "2",
+        "log_collection_upgrade_gke" : "14",
+        "update_test_gke" : "57",
+        "vora_tools_ui_e2e_test_gke": "6",
+        "vora_dqp_test_gke": "18"
+    },
+
+    "build_costs" : {
+        "normal" : "134",
+        "update_reposity" : "175",
+        "upgrade_test" : "175"
+    }
+}

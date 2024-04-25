@@ -1,0 +1,18 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_ssh_base AS ssh_base
+
+FROM ubuntu:18.04
+
+ARG KUBECTL_VERSION=1.13.8
+RUN apt-get update && apt-get -y install curl wget tar python2.7 python-pip git net-tools > /dev/null
+RUN pip install --upgrade pip && \
+    pip install --upgrade setuptools && \
+    pip install urllib3==1.25.3 && \
+    pip install kubernetes==10.0.1 && \
+    pip install requests==2.22.0 > /dev/null
+RUN wget https://int.repositories.cloud.sap/artifactory/deploy-releases/com/sap/hana/hl/linuxx86_64/hl-vsystem-client/2.3.64/hl-vsystem-client-2.3.64-linuxx86_64.tar.gz > /dev/null && tar -xvf hl-vsystem-client-2.3.64-linuxx86_64.tar.gz && chmod +x vctl && cp vctl /bin/vctl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl && chmod +x kubectl && cp kubectl /bin/kubectl
+RUN rm -rf /var/lib/apt/lists/* && apt-get update
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash > /dev/null && apt-get install -y nodejs > /dev/null && npm install npm -g > /dev/null
+
+COPY --from=ssh_base /root/.ssh/* /root/.ssh/
+RUN chmod 600 /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa-gerrit

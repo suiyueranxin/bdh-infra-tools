@@ -1,0 +1,4 @@
+---
+- hosts: workstation
+  roles:
+    - { role: gcloud-k8s-cluster-remove }

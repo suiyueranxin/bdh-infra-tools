@@ -1,0 +1,24 @@
+# Update skopeo version to latest, on May 5, 2022
+FROM golang:1.17-alpine AS builder
+
+RUN apk add --no-cache \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    btrfs-progs-dev \
+    lvm2-dev \
+    gpgme-dev \
+    glib-dev || apk update && apk upgrade
+
+WORKDIR $GOPATH/src/github.com/containers/skopeo
+RUN git clone https://github.com/containers/skopeo $GOPATH/src/github.com/containers/skopeo
+RUN cd $GOPATH/src/github.com/containers/skopeo && make bin/skopeo CGO_ENABLED=0 BUILDTAGS=containers_image_openpgp GO_DYN_FLAGS=
+
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ansible-runtime-gcloud-base:k8s_1.13_helm_2.17_with_jq_and_skopeo_with_def_conn4_with_az_cli
+
+COPY --from=builder /go/src/github.com/containers/skopeo/bin/skopeo /usr/local/bin/skopeo
+COPY --from=builder /go/src/github.com/containers/skopeo/default-policy.json /etc/containers/policy.json
+
+# pip install default connection tooling
+RUN pip install --upgrade sap-datahub-def-conn -i https://int.repositories.cloud.sap/artifactory/api/pypi/build-milestones-pypi/simple/ --trusted-host int.repositories.cloud.sap

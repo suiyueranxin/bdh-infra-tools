@@ -1,0 +1,28 @@
+---
+- name: create worker machines on google cloud
+  gce:
+    credentials_file: "{{google_application_credentials}}"
+    service_account_email: "{{ gcloud_service_account_credentials.client_email }}"
+    project_id: "{{ gcloud_project_id }}"
+    zone: "{{ gcloud_zone }}"
+    instance_names: "{{ item }}"
+    machine_type: "{{ gcloud_instance_machine_type }}"
+    image_family: "{{ gcloud_image_family }}"
+    image: "{{ gcloud_instance_image_type }}"
+    disk_size: "{{ gcloud_instance_disk_size }}"
+    persistent_boot_disk: True
+    external_ip: none
+    ip_forward: True
+    state: present
+    metadata : '{ "ssh-key" : "{{ ssh_pubkey }}" }'
+    service_account_permissions: "{{ gcloud_instance_sa_permissions }}"
+    tags: "{{ gcloud_instance_tags }}"
+  with_sequence: start=0 count="{{ gcloud_number_of_workers }}" format={{ gcloud_instance_worker_name_prefix }}-%02d
+  register: created_workers
+
+- name: set fact worker_instances
+  set_fact:
+    worker_instances: "{{ created_workers.results }}"
+
+- name: Debug worker_instances
+  debug: var=worker_instances

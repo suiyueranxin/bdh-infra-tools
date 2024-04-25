@@ -1,0 +1,6 @@
+---
+- name: Assert if selected images are supported
+  assert:
+    that:
+    - "master_image in supported_monsoon_images"
+    - "worker_image in supported_monsoon_images"

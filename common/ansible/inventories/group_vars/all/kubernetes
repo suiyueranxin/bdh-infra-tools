@@ -1,0 +1,18 @@
+nfs_path: "/nfsfileshare"
+local_nfs_path: "/nfsfileshare"
+kube_admin_config_path: "/etc/kubernetes/admin.conf"
+
+# vora_flavor "BDH" enables vflow and text-analysis, set to empty string for "vora standalone"
+vora_flavor: "BDH"
+kube_provision_persistent_volumes: "yes"
+vora_install_config_hana: "no"
+vora_install_config_hdfs: "no"
+enable_authentication: "no"
+enable_security_operator: "no"
+installer_workspace: /tmp
+vora_kube_namespace: vora-{{ SAPHanaVora_version.major }}-{{ SAPHanaVora_version.minor }}
+# vora_kubernetes_local_pkg: /path/to/SAPVora-DistributedRuntime.tar.gz
+k8s_version: 1.9.6
+kubelet_version: "{{ k8s_version }}"
+kubeadm_version: "{{ k8s_version }}"
+kubectl_version: "{{ k8s_version }}"

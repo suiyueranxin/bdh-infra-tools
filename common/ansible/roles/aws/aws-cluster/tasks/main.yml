@@ -1,0 +1,21 @@
+---
+- name: ref the aws common vars
+  include_vars:
+    file: "{{ role_path }}/../aws-vars.yml"
+
+- name: Assert if selected images are supported
+  assert:
+    that:
+    - "aws_cluster_zone in supported_aws_zones"
+
+- name: initialize worker_instances variable
+  set_fact:
+    worker_instances: []
+
+- include: assert-images.yml
+- include: create-master.yml
+- include: create-workers.yml
+- include: create-inventory-file.yml
+- include: wait-until-instances-ready-master.yml machines={{ master_instances_facts }}
+- include: wait-until-instances-ready.yml machines={{ worker_instances }}
+- meta: refresh_inventory

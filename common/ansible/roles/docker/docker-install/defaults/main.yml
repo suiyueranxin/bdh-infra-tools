@@ -1,0 +1,12 @@
+docker_version: 1.12
+#docker_version: 17
+
+docker_repo: community
+#docker_repo: official  # provided by docker.com, only valid for Docker releases >= 17
+
+docker_insecure_registry: 10.0.0.0/8  # all hosts within the SAP network
+#docker_insecure_registry: 127.0.0.0/8 # localhost only
+
+docker_cleanup_old: false
+
+docker_cgroup_driver: cgroupfs

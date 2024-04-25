@@ -1,0 +1,58 @@
+---
+
+- name: judge docker registry is exist or not
+  shell: docker ps
+  register: isDockerRegistryExist
+
+- name: create /regdata dir
+  file:
+    path: /regdata
+    state: directory
+    mode: 0755
+
+
+- name: set fact for cert_domain
+  set_fact:
+    cert_domain: "{{ inventory_hostname }}"
+
+- name: Copy ca-signed certificate generation script
+  copy:
+    src: generate_cert.sh 
+    dest: /regdata/generate_cert.sh 
+    mode: 0755
+
+- name: Copy client certificate
+  copy:
+    src: all.pem
+    dest: /regdata/all.pem
+    mode: 0555
+
+- name: Copy CA certificate chain 
+  copy:
+    src: ca.crt
+    dest: /regdata/ca.crt
+    mode: 0555
+
+- name: Generate ca-signed certifcate
+  shell: "./generate_cert.sh {{ cert_domain }}"
+  args:
+    chdir: /regdata
+
+# - name: start docker registry
+#   shell: "docker run -d -p 5000:5000 \
+#          --restart=always \
+#          --name registry \
+#          -v /regdata:/var/lib/registry \
+#          -e REGISTRY_HTTP_ADDR=0.0.0.0:5000 \
+#          -e REGISTRY_HTTP_TLS_CERTIFICATE=/var/lib/registry/server.crt \
+#          -e REGISTRY_HTTP_TLS_KEY=/var/lib/registry/rsa_private.key \
+#          registry:2"
+#   when: isDockerRegistryExist.stdout.find('registry') == -1
+
+- name: start docker registry
+  shell: "docker run -d -p 5000:5000 \
+         --restart=always \
+         --name registry \
+         -v /regdata:/var/lib/registry \
+         registry:2"
+  when: isDockerRegistryExist.stdout.find('registry') == -1

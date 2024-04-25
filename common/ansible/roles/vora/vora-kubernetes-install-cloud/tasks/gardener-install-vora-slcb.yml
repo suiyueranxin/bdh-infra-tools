@@ -1,0 +1,448 @@
+---
+- name: set extra parameters
+  set_fact:
+    slp_extra_parameters: "-e vsystem.pvcSize=20Gi -e hana.traceStorage=20Gi -e diagnostic.volumes.prometheusServer.size=20Gi"
+  when: cloud_platform == "ack"
+  tags:
+    - install
+    - update
+
+- name: judge dev config file is exits or not
+  shell: ls {{ dev_config_file }}
+  ignore_errors: yes
+  register: dev_config_file_result
+  when: dev_config_file is defined
+  tags:
+    - install
+    - update
+
+- name: set dev config file
+  set_fact:
+    extra_install_parameters: "{{ extra_install_parameters }} --dev-config-file={{ dev_config_file }}"
+  when: dev_config_file is defined and dev_config_file_result.rc == 0
+  tags:
+    - install
+    - update
+  no_log: true
+
+- name: Set SAP Docker private repository
+  set_fact:
+    docker_repository_flag: "--SAP_PV_DOCKER_REPO {{ docker_artifactory }}"
+  when: docker_artifactory == "public.int.repositories.cloud.sap"
+  tags:
+    - install
+    - update
+
+- name: Set SAP Docker public repository
+  set_fact:
+    docker_repository_flag: "--SAP_REPO {{ docker_artifactory }}"
+  when: docker_artifactory != "" and docker_artifactory != "public.int.repositories.cloud.sap"
+  tags:
+    - install
+    - update
+
+- name: Set SAP Docker repository to use default
+  set_fact:
+    docker_repository_flag: ""
+  when: docker_artifactory is undefined or docker_artifactory == ""
+  tags:
+    - install
+    - update
+
+- name: Set fact for removing -ms from old master branch
+  set_fact:
+    vorapkg_version_replace: "{{ vorapkg_version | regex_replace('-ms', '')}}"
+  tags:
+    - install
+    - update
+
+- name: Set DI {{ base_profile }} flag when version "{{ vorapkg_version }}" egt "{{ vorapkg_version_slcb_full_product_bridge }}"
+  set_fact:
+    product_bridge_name: "com.sap.datahub.linuxx86_64/{{ base_profile }}-product-bridge"
+    product_bridge_flag: "--useBridgeImage com.sap.datahub.linuxx86_64/{{ base_profile }}-product-bridge:{{ vorapkg_version }}"
+    slcb_custom_base_profile_name: "{{ base_profile }}"
+  when: vorapkg_version_replace >= vorapkg_version_slcb_full_product_bridge
+  tags:
+    - install
+    - update
+
+- name: Set product bridge flag when version "{{ vorapkg_version }}" lt "{{ vorapkg_version_slcb_full_product_bridge }}"
+  set_fact:
+    product_bridge_name: "com.sap.datahub.linuxx86_64/di-platform-product-bridge"
+    product_bridge_flag: "--useBridgeImage com.sap.datahub.linuxx86_64/di-platform-product-bridge:{{ vorapkg_version }}"
+    slcb_custom_base_profile_name: "default"
+  when: vorapkg_version_replace < vorapkg_version_slcb_full_product_bridge
+  tags:
+    - install
+    - update
+
+- name: Display product bridge flag
+  debug:
+    msg: "Will start slcb installation with product bridge: {{product_bridge_flag}}"
+  tags:
+    - install
+    - update
+# resume block
+- block:
+  - name: Get backup bucket
+    shell: echo {{ di_backup_name }} | awk -F '/' '{print $1"/"$2}'
+    register: backup_bucket
+
+  - name: Get backup name
+    shell: echo {{ di_backup_name }} | awk -F '/' '{print $3}'
+    register: backup_name
+
+  - name: Get backup timestamp
+    shell: echo {{ di_backup_name }} | awk -F '/' '{print $4}'
+    register: backup_timestamp
+
+  - name: Get backup date
+    shell: date -d "@{{ backup_timestamp.stdout }}" +"%Y-%m-%d %H:%M:%S %:z"
+    register: backup_date
+
+  when: enable_restore is defined and enable_restore == "true"
+  environment:
+    KUBECONFIG: "{{ gardener_k8s_cluster_kubeconfig }}"
+  tags:
+    - install
+
+- name: set fact slcb_init = true
+  set_fact:
+    slcb_init: "true"
+  tags:
+    - install
+    - update    
+
+- name: generate slcb configuration file
+  template:
+    src: install_slcb_variables.j2
+    dest: "{{ installer_workspace }}/inifile"
+  tags:
+    - install
+    - update
+
+- name: Print out slcb configuration file
+  shell: "cat {{ installer_workspace }}/inifile"
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: copy slcb inifile to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/inifile"
+    dest: inifile
+    flat: yes
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: download slcb
+  get_url:
+    url: "{{ slcb_download_url }}"
+    dest: "{{ installer_workspace }}/slcb"
+    mode: '0744'
+    timeout: 900
+    validate_certs: no
+  tags:
+    - install
+    - update
+
+- name: download unzip
+  shell: "apt-get update -y; apt-get install -y unzip"
+  environment:
+    "{{ installer_env }}"
+  when: slcb_package_suffix == "zip"
+  tags:
+    - install
+    - update
+
+- name: unzip slcb
+  unarchive:
+    src: "{{ installer_workspace }}/slcb"
+    dest: "{{ installer_workspace }}"
+  environment:
+    "{{ installer_env }}"
+  when: slcb_package_suffix == "zip"
+  tags:
+    - install
+    - update
+
+- name: create missing repositories in bridge at AWS-EKS platform
+  shell: "{{role_path}}/files/aws_create_repositories_slcb.sh {{ installer_workspace }} {{ docker_artifactory }} {{ product_bridge_name }}:{{ vorapkg_version }}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{role_path}}/files"
+    executable: /bin/bash
+  ignore_errors: true
+  when: cloud_platform == "eks" and bdh_install_own_registry != "yes"
+  tags:
+    - install
+    - update
+
+- name: create missing repositories in bridge at AWS-EKS platform with bdh_docker_registry_subname
+  shell: "{{role_path}}/files/aws_create_repositories_slcb.sh {{ installer_workspace }} {{ docker_artifactory }} {{ product_bridge_name }}:{{ vorapkg_version }}  {{ bdh_docker_registry_subname }}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{role_path}}/files"
+    executable: /bin/bash
+  ignore_errors: true
+  when: cloud_platform == "eks" and bdh_install_own_registry == "yes"
+  tags:
+    - install
+    - update
+
+- name: create missing vflow repository
+  shell: "aws ecr create-repository --repository-name={{eks_vflow_docker_registry}}"
+  ignore_errors: true
+  when: cloud_platform == "eks"
+  tags:
+    - install
+    - update
+
+
+- name: add placeholder at vara_installation.log file
+  shell: "echo 'DI installed via slcb, please see details info at slcb log...' >> {{ vora_installation_log }}"
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: workaround step for SLCB 1.1.44
+  shell: "./slcb copy {{ docker_repository_flag }} -i {{ installer_workspace }}/inifile {{ product_bridge_flag }} -u none 2>&1 | tee slcb_copy_workaround.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  register: slcb_copy_workaround_result
+  until: slcb_copy_workaround_result.rc == 0
+  retries: 3
+  delay: 60
+  tags:
+    - install
+    - update
+
+- name: slcb init
+  shell: "./slcb init -l debug -i inifile --namespace {{ slc_ns }} -u none 2>&1 | tee {{ installer_workspace }}/slcb_init_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  ignore_errors: yes
+  register: slcb_init_result
+  until: slcb_init_result.rc == 0
+  retries: 3
+  delay: 60
+  tags:
+    - install
+    - update
+
+- name: copy slcb init log to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/slcb_init_process.log"
+    dest: slcb_init_process.log
+    flat: yes
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: Fail if slcb init failed
+  assert: { that: "slcb_init_result.rc == 0 and slcb_init_result.changed == true" }
+  tags:
+    - install
+    - update
+
+- name: slcb mirror
+  shell: "./slcb copy -l debug -i inifile {{ docker_repository_flag }} {{ product_bridge_flag }} -u none 2>&1 | tee {{ installer_workspace }}/slcb_copy_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  ignore_errors: yes
+  register: slcb_copy_result
+  until: slcb_copy_result.rc == 0
+  retries: 3
+  delay: 60
+  tags:
+    - install
+    - update
+
+#- name: slcb mirror --skipBridgehead
+#  shell: "./slcb copy -l debug -i inifile {{ docker_repository_flag }} {{ product_bridge_flag }} -u none --skipBridgehead 2>&1 | tee {{ installer_workspace }}/slcb_copy_process.log; exit ${PIPESTATUS[0]}"
+#  environment:
+#    "{{ installer_env }}"
+#  args:
+#    chdir: "{{ installer_workspace }}"
+#    executable: /bin/bash
+#  ignore_errors: yes
+#  register: slcb_copy_result_skipBh
+#  until: slcb_copy_result_skipBh.rc == 0
+#  retries: 3
+#  delay: 60
+#  tags:
+#    - install
+#    - update
+
+- name: copy slcb copy log to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/slcb_copy_process.log"
+    dest: slcb_copy_process.log
+    flat: yes
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: Fail if slcb copy failed
+  assert: { that: "slcb_copy_result.rc == 0 and slcb_copy_result.changed == true" }
+  tags:
+    - install
+    - update
+
+- name: set_fact slcb_init = false
+  set_fact:
+    slcb_init: "false"
+  tags:
+    - install
+    - update
+
+- name: generate slcb configuration file again before execute
+  template:
+    src: install_slcb_variables.j2
+    dest: "{{ installer_workspace }}/inifile"
+  tags:
+    - install
+    - update
+
+- name: Print out slcb configuration file
+  shell: "cat {{ installer_workspace }}/inifile"
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: copy slcb inifile to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/inifile"
+    dest: inifile
+    flat: yes
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: install the DI via slcb execute
+  shell: "./slcb execute -l debug -x -i inifile --namespace {{ slc_ns }} {{ docker_repository_flag }} --streamBridgeLog {{ product_bridge_flag }} -u none 2>&1 | tee {{ installer_workspace }}/slcb_execute_process.log; exit ${PIPESTATUS[0]}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_workspace }}"
+    executable: /bin/bash
+  ignore_errors: yes
+  register: slcb_exec_result
+  tags:
+    - install
+    - update
+  #no_log: true
+
+- name: copy slcb execute log to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/slcb_execute_process.log"
+    dest: slcb_execute_process.log
+    flat: yes
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: archive the slcb logs folder
+  archive:
+    path:
+      - "{{ installer_workspace }}/work"
+      - "{{ installer_workspace }}/slcb.log"
+    dest: "{{ installer_workspace }}/{{ slcb_log }}"
+    format: zip
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: copy slcb logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ slcb_log }}"
+    dest: "{{ slcb_log }}"
+    flat: yes
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- name: Fail if slcb execute failed
+  assert: { that: "slcb_exec_result.rc == 0 and slcb_exec_result.changed == true" }
+  tags:
+    - install
+    - update
+# install with enabled backup block
+- block:
+  - name: Check backup_str
+    shell: kubectl -n {{ vora_kube_namespace }} get bak --sort-by=.metadata.creationTimestamp | tail -n -1 | awk -F ' ' '{print $1}'
+    register: backup_str
+    until: backup_str.stdout != "" and backup_str.stderr == ""
+    retries: 44 # Wait for 11 minutes max
+    delay: 15
+
+  - name: Set backup_cr
+    set_fact:
+      backup_cr: "{{ backup_str.stdout }}"
+
+  - name: Check backup state
+    shell: kubectl -n {{ vora_kube_namespace }} get bak {{ backup_cr }} -o jsonpath='{.status.state}'
+    register: backup_state
+    until: backup_state.stdout == "Ready"
+    retries: 60 # Wait for 30 minutes max
+    delay: 30
+
+  - name: Get backup_time
+    shell: kubectl -n {{ vora_kube_namespace }} get bak {{ backup_cr }} -o jsonpath="{.status.conditions[?(@.type=='backupStartedAt')].timestamp}"
+    register: backup_time
+
+  - name: Get backup_timestamp
+    shell: date -d {{ backup_time.stdout }} +%s
+    register: backup_timestamp
+
+  - name: Get backup_date
+    shell: date -d {{ backup_time.stdout }} +'%Y-%m-%d %H:%M:%S %:z'
+    register: backup_date
+
+
+  - name: Get cluster_id
+    shell: kubectl -n {{ vora_kube_namespace }} get bak {{ backup_cr }} -o jsonpath='{.spec.clusterID}'
+    register: cluster_id
+
+  - name: Get backup_name
+    set_fact:
+      di_backup_name: "{{ gke_bucket_name }}/{{ cluster_id.stdout }}/{{ backup_timestamp.stdout }}"
+
+  when: enable_backup is defined and enable_backup == "true"
+  environment:
+    KUBECONFIG: "{{ gardener_k8s_cluster_kubeconfig }}"
+  tags:
+    - install
+
+- name: download vctl with slcb installation mode
+  shell: "{{ role_path }}/files/vctl_download.sh {{ vorapkg_version_replace }} {{ installer_path }}/tools"
+  ignore_errors: yes
+  register: vctl_download_result
+  until: vctl_download_result.rc == 0
+  retries: 3
+  delay: 60
+  tags:
+    - install
+    - update

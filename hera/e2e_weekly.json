@@ -1,0 +1,324 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "name": "dhaas_creation_dhaas_aws",
+      "type": "docker",
+      "timeout": 30600,
+      "resources": {
+        "limits": {
+          "cpu": 2,
+          "memory": 2048
+        }
+      },
+      "build_only": false,
+      "build_context": "../",
+      "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+      "environment": {
+        "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+        "SERVER_URL": "https://im-api.datahub.only.sap",
+        "SYS_ACCOUNT": "system",
+        "SYS_PASSWORD": "@AHD90G2s3yls=",
+        "MAX_READY_WAIT": "28800",
+        "MAX_REFUSE_WAIT": "10800",
+        "PROVISION_PLATFORM": "DHAAS-AWS",
+        "MAX_ERROR_RETRY_NUM": "4",
+        "CREATE_TOTAL_TIMEOUT": "29400",
+        "MAX_CREATE_RETRY_NUM": "1",
+        "USE_FOR": "MILESTONE_VALIDATION"
+      },
+      "repository": {
+        "full_history": true
+      }
+    },
+    {
+      "name": "e2e_weekly_test_dhaas_aws",
+      "type": "docker",
+      "timeout": 86400,
+      "resources": {
+        "limits": {
+          "cpu": 2,
+          "memory": 4096
+        }
+      },
+      "build_only": false,
+      "build_context": "../",
+      "docker_file": "hera/ci/hanalite-releasepack/infrabox/app_test/Dockerfile",
+      "environment": {
+        "MAX_RUN": "1",
+        "CLOUD_ONLY": "1",
+        "VALIDATION_TYPE": "WEEKLY_E2E",
+        "PARENT_INSTALL_JOB": "dhaas_creation_dhaas_aws",
+        "BDH_HEALTH_CHECK_DEFAULT": "CONNECTION_MANAGEMENT, PIPELINE_MODELER, FLOWAGENT, METADATA_EXPLORER",
+        "dh_test_server_S3": {
+          "$secret": "dh_test_server_S3"
+        },
+        "dh_test_server_ADL": {
+          "$secret": "dh_test_server_ADL"
+        },
+        "dh_test_server_DB2": {
+          "$secret": "dh_test_server_DB2"
+        },
+        "dh_test_server_GBQ": {
+          "$secret": "dh_test_server_GBQ"
+        },
+        "dh_test_server_GCS": {
+          "$vault": "dev-infra-ci-cd",
+          "$vault_secret_path": "secret/internal-system/IM/GCP/sap-p-and-i-big-data-vora/im-gcs",
+          "$vault_secret_key": "credential_milestone"
+        },
+        "dh_test_server_WASB": {
+          "$secret": "dh_test_server_WASB"
+        },
+        "CONTINUES_INTEGRATION": "TRUE",
+        "dh_test_server_GCP_BW": {
+          "$secret": "dh_test_server_GCP_BW"
+        },
+        "dh_test_server_HANA_BW": {
+          "$secret": "dh_test_server_HANA_BW"
+        },
+        "dh_test_server_GCP_HANA": {
+          "$secret": "dh_test_server_GCP_HANA"
+        },
+        "dh_test_server_GCP_KAFKA": {
+          "$secret": "dh_test_server_GCP_KAFKA"
+        },
+        "dh_test_server_GCP_MSSQL": {
+          "$secret": "dh_test_server_GCP_MSSQL"
+        },
+        "dh_test_server_GCP_MYSQL": {
+          "$secret": "dh_test_server_GCP_MYSQL"
+        },
+        "dh_test_server_GCP_ORACLE": {
+          "$secret": "dh_test_server_GCP_ORACLE"
+        },
+        "dh_test_server_DATASERVICES": {
+          "$secret": "dh_test_server_DATASERVICES"
+        },
+        "dh_test_server_GCP_HDFS_RPC": {
+          "$secret": "dh_test_server_GCP_HDFS_RPC"
+        },
+        "dh_test_server_GCP_DATASERVICES": {
+          "$secret": "dh_test_server_GCP_DATASERVICES"
+        },
+        "dh_test_server_GCP_HDFS_WEBHDFS": {
+          "$secret": "dh_test_server_GCP_HDFS_WEBHDFS"
+        },
+        "dh_test_server_AWS_HDFS_KERBEROS_RPC": {
+          "$secret": "dh_test_server_AWS_HDFS_KERBEROS_RPC"
+        },
+        "dh_test_server_AWS_HDFS_KERBEROS_WEBHDFS": {
+          "$secret": "dh_test_server_AWS_HDFS_KERBEROS_WEBHDFS"
+        },
+        "dh_test_server_SAPIQ": {
+          "$secret": "dh_test_server_SAPIQ"
+        },
+        "dh_test_server_ABAP_UK": {
+          "$secret": "dh_test_server_ABAP_UK"
+        },
+        "dh_test_server_GCS_GBQ": {
+          "$secret": "dh_test_server_GCS_GBQ"
+        },
+        "dh_test_server_ABAP_GC1_RFC": {
+          "$secret": "dh_test_server_ABAP_GC1_RFC"
+        },
+        "dh_test_server_OCN": {
+          "$secret": "dh_test_server_OCN"
+        },
+        "dh_test_server_OCN_SF": {
+          "$secret": "dh_test_server_OCN_SF"
+        },
+        "dh_test_server_CDI": {
+          "$secret": "dh_test_server_CDI"
+        },
+        "dh_test_server_HANA_CDI": {
+          "$secret": "dh_test_server_HANA_CDI"
+        },
+        "dh_test_server_ABAP_GCX_RFC": {
+          "$secret": "dh_test_server_ABAP_GCX_RFC"
+        },
+        "dh_salesforce_openapi": {
+          "$secret": "dh_salesforce_openapi"
+        },
+        "dh_test_server_ADLV2": {
+          "$secret": "dh_test_server_ADLV2"
+        },
+        "dh_test_server_COLGATE_ODATA": {
+          "$secret": "dh_test_server_COLGATE_ODATA"
+        },
+        "dh_test_server_AWS_HDFS_RPC": {
+          "$secret": "dh_test_server_AWS_HDFS_RPC"
+        },
+        "dh_test_server_REDSHIFT": {
+          "$secret": "dh_test_server_REDSHIFT"
+        },
+        "dh_test_server_OPENAPI": {
+          "$secret": "dh_test_server_OPENAPI"
+        },
+        "dh_test_server_AZURE_SQL": {
+          "$secret": "dh_test_server_AZURE_SQL"
+        },
+        "dh_test_server_OSS": {
+          "$secret": "dh_test_server_OSS"
+        },
+        "dh_test_server_AWS_HDFS_WEBHDFS": {
+          "$secret": "dh_test_server_AWS_HDFS_WEBHDFS"
+        },
+        "dh_test_server_ABAP_GC1_HTTPS": {
+          "$secret": "dh_test_server_ABAP_GC1_HTTPS"
+        },
+        "dh_test_server_CPEM": {
+          "$secret": "dh_test_server_CPEM"
+        },
+        "dh_test_server_ODATA_HANA": {
+          "$secret": "dh_test_server_ODATA_HANA"
+        },
+        "dh_test_server_ODATA_SF": {
+          "$secret": "dh_test_server_ODATA_SF"
+        },
+        "dh_test_server_SDL_S3": {
+          "$secret": "dh_test_server_SDL_S3"
+        },
+        "dh_test_server_SDL_ADLV2": {
+          "$secret": "dh_test_server_SDL_ADLV2"
+        },
+        "dh_test_server_SDL_WASB": {
+          "$secret": "dh_test_server_SDL_WASB"
+        },
+        "dh_test_server_SDL_GCS": {
+          "$vault": "dev-infra-ci-cd",
+          "$vault_secret_path": "secret/internal-system/IM/GCP/sap-p-and-i-big-data-vora/im-gcs",
+          "$vault_secret_key": "credential_milestone"
+        },
+        "dh_test_server_SDL_OSS": {
+          "$secret": "dh_test_server_SDL_OSS"
+        },
+        "dh_test_server_AWS_HDFS_SWEBHDFS": {
+          "$secret": "dh_test_server_AWS_HDFS_SWEBHDFS"
+        },
+        "dh_test_server_IS": {
+          "$secret": "dh_test_server_IS"
+        },
+        "dh_test_server_HDL_DB": {
+          "$secret": "dh_test_server_HDL_DB"
+        },
+        "dh_test_server_SNOWFLAKE": {
+          "$secret": "dh_test_server_SNOWFLAKE"
+        },
+        "dh_test_server_GBQIM": {
+          "$vault": "dev-infra-ci-cd",
+          "$vault_secret_path": "secret/internal-system/IM/GCP/sap-p-and-i-big-data-vora/im-gcs",
+          "$vault_secret_key": "credential_milestone"
+        },
+        "dh_test_server_HDL_FILES": {
+          "$secret": "dh_test_server_HDL_FILES"
+        }
+      },
+      "depends_on": [
+        {
+          "job": "dhaas_creation_dhaas_aws",
+          "on": [
+            "finished"
+          ]
+        }
+      ],
+      "repository": {
+        "full_history": true
+      }
+    },
+    {
+      "name": "job_report_dhaas_aws",
+      "type": "docker",
+      "timeout": 7200,
+      "resources": {
+        "limits": {
+          "cpu": 1,
+          "memory": 1024
+        }
+      },
+      "build_only": false,
+      "build_context": "../",
+      "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+      "environment": {
+        "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+        "RESTAPI_PATH": "/api/v1/trd/insert",
+        "RESTAPI_PORT": "30711",
+        "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+        "DEFAULT_RECEIVERS": "max.zhang@sap.com",
+        "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+        "CONTINUES_INTEGRATION": "TRUE",
+        "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+        "VORA_KUBE_SUFFIX": "DI-Assembly",
+        "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+        "FULL_PLATFORM": "dhaas_aws",
+        "DEPLOY_TYPE": "on_cloud",
+        "USE_FOR": "MILESTONE_VALIDATION_e2e",
+        "INFRABOX_API_TOKEN": {
+            "$secret": "INFRABOX_API_TOKEN"
+        }
+      },
+      "depends_on": [
+        {
+          "job": "dhaas_creation_dhaas_aws",
+          "on": [
+            "*"
+          ]
+        },
+        {
+          "job": "e2e_weekly_test_dhaas_aws",
+          "on": [
+            "*"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "k8s_deletion_dhaas_aws",
+      "type": "docker",
+      "timeout": 12600,
+      "resources": {
+        "limits": {
+          "cpu": 1,
+          "memory": 1024
+        }
+      },
+      "build_only": false,
+      "build_context": "../",
+      "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+      "environment": {
+        "IM_AUTH_HEADER": {
+                    "$secret": "IM_TOKEN"
+                },
+        "SERVER_URL": "https://im-api.datahub.only.sap",
+        "K8S_CREATION_JOB": "dhaas_creation_dhaas_aws",
+        "USE_FOR": "MILESTONE_VALIDATION",
+        "PROVISION_PLATFORM": "DHAAS_AWS"
+      },
+      "depends_on": [
+        {
+          "job": "dhaas_creation_dhaas_aws",
+          "on": [
+            "finished"
+          ]
+        },
+        {
+          "job": "e2e_weekly_test_dhaas_aws",
+          "on": [
+            "finished"
+          ]
+        },
+        {
+          "job": "job_report_dhaas_aws",
+          "on": [
+            "*"
+          ]
+        }
+      ],
+      "repository": {
+        "full_history": true
+      }
+    }
+  ]
+}

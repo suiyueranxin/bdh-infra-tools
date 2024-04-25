@@ -1,0 +1,120 @@
+- name: set vsystem-use-external-auth option
+  set_fact:
+    vsystem_use_external_auth_option: "--vsystem-use-external-auth"
+  when: vsystem_use_external_auth == "yes"
+  tags:
+    - uninstall
+
+- name: set vsystem-use-external-auth option
+  set_fact:
+    vsystem_use_external_auth_option: " "
+  when: vsystem_use_external_auth != "yes"
+  tags:
+    - uninstall
+
+- name: set enable-network-policies option
+  set_fact:
+    enable_network_policies_option: " "
+  when: enable_network_policies != "yes"
+  tags:
+    - uninstall
+
+- name: set enable-network-policies option
+  set_fact:
+    enable_network_policies_option: "--enable-network-policies=yes"
+  when: enable_network_policies == "yes"
+  tags:
+    - uninstall
+
+- name: set enable-kaniko option to empty
+  set_fact:
+    enable_kaniko_option: " "
+  when: enable_kaniko != "yes" and enable_kaniko != "no"
+  tags:
+    - uninstall
+
+- name: set enable-kaniko to yes
+  set_fact:
+    enable_kaniko_option: "--enable-kaniko=yes"
+  when: enable_kaniko == "yes"
+  tags:
+    - uninstall
+
+- name: set enable-kaniko to no 
+  set_fact:
+    enable_kaniko_option: "--enable-kaniko=no"
+  when: enable_kaniko == "no"
+  tags:
+    - uninstall
+
+- name: set extra install options
+  set_fact:
+    extra_install_parameters: ""
+  when: extra_install_parameters is not defined
+  tags:
+    - uninstall
+
+- name: set enable kaniko
+  set_fact:
+    enable_kaniko_option: ""
+  when: enable_kaniko_option is not defined
+  tags:
+    - uninstall
+
+- debug:
+    var: extra_install_parameters
+  tags:
+    - uninstall
+
+- name: set installer common command variable
+  set_fact:
+    installer_common_cmd: "--namespace={{ vora_kube_namespace }} \
+                         --docker-artifactory={{docker_artifactory}} \
+                         --artifactory-login-opt={{artifactory_login_opt}} \
+                         --artifactory-login-username={{artifactory_login_username}} \
+                         --artifactory-login-password={{artifactory_login_password}} \
+                         --vora-system-password={{ vora_system_tenant_password }} \
+                         --vora-admin-username={{ vora_username }} \
+                         --vora-admin-password={{ vora_password }} \
+                         --accept-license \
+                         --non-interactive-mode \
+                         {{vsystem_use_external_auth_option}} \
+                         {{enable_network_policies_option}} \
+                         {{enable_kaniko_option}} \
+                         --interactive-security-configuration=no \
+                         -e hana.resources.requests.memory={{hana_resources_requests_memory}} \
+                         -e hana.resources.limits.memory={{hana_resources_limits_memory}} \
+                         -e vora-vsystem.policy.cacheValidity=\"5ms\" \
+                         -e hana.resources.requests.cpu=0.5 \
+                         -e uaa.cpu.min=0.25 \
+                         -e vora-vsystem.vSystem.logLevel=debug \
+                         --confirm-settings \
+                         {{extra_install_parameters}}"
+  when: offline_install is not defined or (offline_install is defined and offline_install != "yes")
+  tags:
+    - uninstall
+
+- name: set installer common command variable offline
+  set_fact:
+    installer_common_cmd: "--namespace={{ vora_kube_namespace }} \
+                         --use-images={{images_save_path}} \ 
+                         --vora-system-password={{ vora_system_tenant_password }} \
+                         --vora-admin-username={{ vora_username }} \
+                         --vora-admin-password={{ vora_password }} \
+                         --accept-license \
+                         --non-interactive-mode \
+                         {{vsystem_use_external_auth_option}} \
+                         {{enable_network_policies_option}} \
+                         {{enable_kaniko_option}} \
+                         --interactive-security-configuration=no \
+                         -e hana.resources.requests.memory={{hana_resources_requests_memory}} \
+                         -e hana.resources.limits.memory={{hana_resources_limits_memory}} \
+                         -e vora-vsystem.policy.cacheValidity=\"5ms\" \
+                         -e hana.resources.requests.cpu=0.5 \
+                         -e uaa.cpu.min=0.25 \
+                         -e vora-vsystem.vSystem.logLevel=debug \
+                         --confirm-settings \
+                         {{extra_install_parameters}}"
+  when: offline_install is defined and offline_install == "yes"
+  tags:
+    - uninstall

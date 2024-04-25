@@ -1,0 +1,22 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+
+[masters]
+{% for item in master_instances %}
+{{ item.public_dns_name }}
+{% endfor %}
+
+[workstation:vars]
+master_name=HANA
+master_image="SLES12-SP2-x86_64"
+master_instance_type="hana_5_64"
+
+[all:vars]
+cluster_provider=monsoon
+ansible_ssh_common_args='-o ServerAliveInterval=600'
+# general Monsoon options
+# attached disk will be extended to this logical volume
+vol_to_extend=var

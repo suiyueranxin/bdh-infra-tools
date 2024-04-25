@@ -1,0 +1,20 @@
+---
+- name: (install-k8s-ubuntu.yml) prep for install
+  package: name={{ item }} state=present
+  with_items:
+    - apt-transport-https
+
+- name: (install-k8s-ubuntu.yml) add repo key
+  shell: "curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -"
+
+- name: (install-k8s-ubuntu.yml) add repo
+  apt_repository:
+    repo: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+    state: present
+
+- name: (install-k8s-ubuntu.yml) k8s install
+  package: name={{ item }} state=present
+  with_items:
+    - kubelet={{kubelet_version}}-00
+    - kubectl={{kubectl_version}}-00
+    - kubeadm={{kubeadm_version}}-00

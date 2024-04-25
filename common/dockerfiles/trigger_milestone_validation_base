@@ -1,0 +1,5 @@
+FROM docker.wdf.sap.corp:51022/com.sap.datahub.linuxx86_64/hanalite-build:0.0.13
+
+RUN apt-get update && \
+    apt-get -y install python3-pip && \
+    pip3 install infraboxcli

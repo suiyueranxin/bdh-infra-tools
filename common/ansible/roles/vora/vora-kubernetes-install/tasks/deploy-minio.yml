@@ -1,0 +1,38 @@
+---
+- name: set minio server info
+  shell: "mc config host add gcp_minio {{minio_server}} {{minio_access_key}} {{minio_secret_key}} --api S3v4"
+  tags:
+    - install
+    - update
+
+- name: list current buckets
+  shell: "mc ls gcp_minio"
+  register: current_buckets
+  tags:
+    - install
+    - update
+
+- name: display current buckets info
+  debug:
+    var: current_buckets
+  tags:
+    - install
+    - update
+
+- name: create directory for checkpoint
+  shell: "mc mb gcp_minio/checkpoints/{{on_premise_cluster_name}}/"
+  tags:
+    - install
+    - update
+
+- name: create test file
+  shell: "touch test.txt"
+  tags:
+    - install
+    - update
+
+- name: upload file to derictory
+  shell: "mc cp --storage-class REDUCED_REDUNDANCY test.txt gcp_minio/checkpoints/{{on_premise_cluster_name}}/"
+  tags:
+    - install
+    - update

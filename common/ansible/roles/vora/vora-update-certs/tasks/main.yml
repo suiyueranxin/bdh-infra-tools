@@ -1,0 +1,16 @@
+---
+- name: Creates certs directory
+  file: path="{{ installer_path }}/deployment/certs" state=directory
+
+- name: Save certs
+  shell: "kubectl get secret {{item}} -n {{ vora_kube_namespace }} -o yaml | grep {{item}}: | awk '{print $2}' | base64 -d > {{ installer_path }}/deployment/certs/{{item}}"
+  environment:
+    "{{ installer_env }}"
+  with_items:
+    - "vora.conf.secop.jwtiss.keystore"
+    - "vora.conf.secop.tlsconfig.ca-bundle"
+    - "vora.conf.secop.tlsconfig.keystore-dh"
+    - "vora.conf.secop.jwtiss.truststore"
+    - "vora.conf.secop.tlsconfig.keystore"
+    - "vora.conf.secop.tlsconfig.truststore"
+    - "vora.conf.secop.userstore"

@@ -1,0 +1,36 @@
+---
+- name: ref the gcloud common vars
+  include_vars:
+    file: "{{ role_path }}/../gcloud-vars.yml"
+
+- name: Set google cloud Service Account environment
+  set_fact:
+    gcloud_env:
+      GOOGLE_APPLICATION_CREDENTIALS: "{{google_application_credentials}}"
+  no_log: true
+
+- name: Set google cloud Service Account environment
+  set_fact:
+    gcloud_service_account_credentials: "{{ lookup('file',google_application_credentials) | from_json }}"
+  no_log: true
+
+- name: Set fact for google persistent disk name
+  set_fact:
+    gcloud_persistent_disk_name: "pd-for-{{ gcloud_k8s_cluster_name }}"
+
+- name: remove k8s cluster at gcloud
+  gcloud:
+    k8s_cluster_project_id: "{{ gcloud_project_id }}"
+    k8s_cluster_zone: "{{ gcloud_zone }}"
+    k8s_cluster_name: "{{ gcloud_k8s_cluster_name }}"
+    request_type: delete
+  environment:
+    "{{ gcloud_env }}"
+
+- name: remove bucket for vora storage check point
+  shell: "gcloud auth activate-service-account --key-file={{ google_application_credentials }};gcloud config set project {{ gcloud_project_id }};gsutil rm -r gs://{{ gcloud_k8s_cluster_name }}/"
+  register: result_bucket
+  ignore_errors: yes
+
+- debug:
+    msg: "The result of create bucket is: {{ result_bucket.stdout }} {{ result_bucket.stderr }}"

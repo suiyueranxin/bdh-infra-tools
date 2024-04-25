@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+ name: vsystem
+ annotations:
+   kubernetes.io/ingress.class: nginx
+{% if enable_client_cert is defined and enable_client_cert == 'true' %}
+   nginx.ingress.kubernetes.io/auth-tls-secret: {{ vora_kube_namespace }}/vora.conf.secop.client.ca.truststore
+   nginx.ingress.kubernetes.io/auth-tls-verify-client: "optional"
+   nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
+   nginx.ingress.kubernetes.io/proxy-ssl-secret: {{ vora_kube_namespace }}/vora.conf.secop.ingress.client.truststore
+{% endif %}
+   nginx.ingress.kubernetes.io/secure-backends: "true"
+   nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+   nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+   nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+   nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+   nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
+   nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
+   nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+spec:
+ tls:
+ - hosts:
+    - {{ aks_cluster_name | replace('_', '-') }}-aks.{{ dns_suffix }}
+   secretName: vsystem-tls-certs
+ rules:
+ - host: {{ aks_cluster_name | replace('_', '-') }}-aks.{{ dns_suffix }}
+   http:
+     paths:
+     - path: /
+       pathType: Prefix
+       backend:
+         service:
+           name: vsystem
+           port: 
+             number: 8797

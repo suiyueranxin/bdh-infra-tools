@@ -1,0 +1,1915 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "name": "build",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build/Dockerfile",
+            "build_only": false,
+            "environment": {
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "FTPENABLE": "FALSE",
+                "FTPHOST": "10.47.221.67",
+                "FTPUSER": "infrabox_user",
+                "FTPPASS": "Sapvora123"
+            },
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 4096
+                }
+            },
+            "build_context": "../",
+            "timeout": 10800
+        },
+        {
+            "name": "build_copy_files",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_copy_files/Dockerfile",
+            "depends_on": [
+                {
+                    "on": [
+                        "*"
+                    ],
+                    "job": "build"
+                }
+            ],
+            "build_only": false,
+            "type": "docker",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 4096
+                }
+            },
+            "build_context": "../"
+        },
+        {
+            "type": "docker",
+            "name": "k8s_creation_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            },
+            "environment": {
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "PROVISION_PLATFORM": "GKE",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "MAX_ERROR_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "7200",
+                "MAX_READY_WAIT": "3600",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_CREATE_RETRY_NUM": "3"
+            },
+            "timeout": 12600
+        },
+        {
+            "type": "docker",
+            "name": "install_gke",
+            "docker_file": "common/dockerfiles/ansible_runtime_gcloud",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "PROVISION_PLATFORM": "GKE",
+                "ENABLE_AUTHENTICATION": "no",
+                "VSYSTEM_VERSION": "1.4.3",
+                "SKIP_VSYSTEM_ASSEMBLY": "yes",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "K8S_CREATION_JOB": "k8s_creation_gke",
+                "FTPENABLE": "FALSE",
+                "FTPHOST": "10.47.221.67",
+                "FTPUSER": "infrabox_user",
+                "FTPPASS": "Sapvora123",
+                "GCP_PROJECT_ID": "sap-p-and-i-big-data-vora",
+                "EXPOSE_PORT": "yes"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 16384
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "build",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "timeout": 10800,
+            "security_context": {
+                "privileged": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "import_export_test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/import_export_test/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "BDH_HEALTH_CHECK_SYSTEM": " ",
+                "BDH_HEALTH_CHECK_DEFAULT": " "
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 2048
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "streaming_tables_test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "GIT_REPO": "ssh://InfraBox@git.wdf.sap.corp:29418/hanalite-releasepack",
+                "TEST_FOLDER": "src/test/integration-test/streaming-tables",
+                "GIT_BRANCH": "master",
+                "DOCKERFILE": "Dockerfile",
+                "COMPONENT_TEST_NAME": "streaming_tables_test"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "deployment_operator_test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/deployment_operator_test/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "CONTINUES_INTEGRATION": "TRUE"
+            }
+        },
+        {
+            "type": "docker",
+            "name": "vflow_test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "security_context": {
+                "privileged": true
+            },
+            "environment": {
+                "EXTERNAL_FLAG": " --external",
+                "SKIP_TESTS": "basic.subengine basic.Kafka basic.HDFS basic.tooManyResources basic.generation2.suites",
+                "RETRY_TEST": "3",
+                "SCENARIO_LIST": "basic advanced.vsolution.machine-learning.tensorflow.ml-trainmnist advanced.google-pubsub",
+                "PARENT_INSTALL_JOB": "install_gke",
+                "COM_DOCKER_IMAGE": "docker.wdf.sap.corp:51022/com.sap.datahub.linuxx86_64/vflow-integration-test",
+                "FLAGS": "--suite-names basic.generation2.suites --ignore-solutions --xml --external",
+                "COMPONENT": "VFLOW",
+                "VFLOW_GRAPH_TEST": "TRUE",
+                "COMPONENT_TEST_NAME": "vflow_test",
+                "VFLOW_IM_TOKEN": {
+                    "$secret": "VFLOW_IM_TOKEN"
+                }
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 8192
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "timeout": 18000
+        },
+        {
+            "type": "docker",
+            "name": "vflow_stable_test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/vflow_test/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "SCENARIO_LIST": "advanced",
+                "SKIP_TESTS": "advanced.dataproc",
+                "RETRY_TEST": "3",
+                "EXTERNAL_FLAG": " --external"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 6,
+                    "memory": 16384
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "vflow_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "timeout": 18000
+        },
+        {
+            "type": "docker",
+            "name": "voratools_test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/voratools_test/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "vora_license_manager_test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "COMPONENT": "LICENSE_MANAGER",
+                "COM_DOCKER_IMAGE": "public.int.repositories.cloud.sap/com.sap.datahub.linuxx86_64/test-vora-license-manager",
+                "COMPONENT_TEST_NAME": "vora_license_manager_test",
+                "BDH_HEALTH_CHECK_SYSTEM": "LICENSE_MANAGER",
+                "BDH_HEALTH_CHECK_DEFAULT": "LICENSE_MANAGER"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "hanawire_test_gke",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "build_only": false,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "build_context": "../",
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "GIT_REPO": "ssh://InfraBox@git.wdf.sap.corp:29418/hanalite-releasepack",
+                "TEST_FOLDER": "src/test/integration-test/hanawire",
+                "COMPONENT_TEST_NAME": "hanawire_test",
+                "COM_BUILD_ARG": "--build-arg HDBSQL_VERSION=2.4.21-ms --build-arg KUBECTL_CLI_VERSION=1.9.6-00 --build-arg HDBCLI_VERSION=2.3.14",
+                "GIT_BRANCH": "master",
+                "DOCKERFILE": "Dockerfile",
+                "BDH_HEALTH_CHECK_SYSTEM": " ",
+                "BDH_HEALTH_CHECK_DEFAULT": " "
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "ui-test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "COMPONENT": "DATA_TOOLS_UI",
+                "DOCKERFILE": "Dockerfile",
+                "COMPONENT_TEST_NAME": "ui-test",
+                "GIT_REPO": "git@github.wdf.sap.corp:velocity/data-tools-ui.git"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "hanalite_dqp_test_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/hanalite_dqp_test/Dockerfile",
+            "build_context": "../",
+            "timeout": 10800,
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME": "docker.wdf.sap.corp",
+                "INTERNAL_DOCKER_REGISTRY_PORT": "51055",
+                "ENABLE_DEPLOYMENTS": "yes",
+                "JOB_NAME": "hanalite_dqp_test_gke",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 12228
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "import_export_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "voratools_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vflow_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vflow_stable_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "streaming_tables_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vora_license_manager_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "ui-test_gke",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "build_arguments": {
+                "INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME": "docker.wdf.sap.corp",
+                "INTERNAL_DOCKER_REGISTRY_PORT": "51055",
+                "SCRIPT_WORKSPACE": "fulcrum"
+            },
+            "security_context": {
+                "privileged": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "log_collection_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "import_export_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "voratools_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vflow_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vflow_stable_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "streaming_tables_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vora_license_manager_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "ui-test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "hanalite_dqp_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "uninstall_gke",
+            "docker_file": "common/dockerfiles/ansible_runtime_gcloud",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "K8S_CREATION_JOB": "k8s_creation_gke",
+                "PROVISION_PLATFORM": "GKE",
+                "ENABLE_AUTHENTICATION": "no",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "FTPENABLE": "FALSE",
+                "FTPHOST": "10.47.221.67",
+                "FTPUSER": "infrabox_user",
+                "FTPPASS": "Sapvora123",
+                "GCP_PROJECT_ID": "sap-p-and-i-big-data-vora",
+                "OPERATION_TYPE": "UNINSTALL"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "build",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "voratools_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "vflow_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "vflow_stable_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "vora_license_manager_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "streaming_tables_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "ui-test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "hanalite_dqp_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "security_context": {
+                "privileged": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "k8s_deletion_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_gke"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "uninstall_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "voratools_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "vflow_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "vflow_stable_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "vora_license_manager_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "streaming_tables_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "ui-test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "hanalite_dqp_test_gke",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "timeout": 10800
+        },
+        {
+            "type": "docker",
+            "name": "job_report_gke",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gke",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "VERBOSE": "1",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "install_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "uninstall_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "k8s_deletion_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vflow_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vflow_stable_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "streaming_tables_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "vora_license_manager_test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "ui-test_gke",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "build_copy_files",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "timeout": 7200
+        },
+        {
+            "type": "docker",
+            "name": "k8s_creation_eks",
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            },
+            "build_only": false,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_context": "../",
+            "environment": {
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "MAX_ERROR_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "7200",
+                "MAX_READY_WAIT": "3600",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_CREATE_RETRY_NUM": "3"
+            },
+            "timeout": 12600
+        },
+        {
+            "type": "docker",
+            "name": "install_eks",
+            "docker_file": "common/dockerfiles/ansible_runtime_eks",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "K8S_CREATION_JOB": "k8s_creation_eks",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "ENABLE_AUTHENTICATION": "no",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "EXPOSE_PORT": "yes",
+                "FTPENABLE": "FALSE",
+                "FTPHOST": "10.47.221.67",
+                "FTPUSER": "infrabox_user",
+                "FTPPASS": "Sapvora123"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 16384
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "build",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "timeout": 10800,
+            "build_arguments": {
+                "ANSIBLE_WORKSPACE": "common",
+                "SCRIPT_WORKSPACE": "fulcrum"
+            },
+            "security_context": {
+                "privileged": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "import_export_test_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/import_export_test/Dockerfile",
+            "build_context": "../",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 2048
+                }
+            },
+            "build_only": false,
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_eks",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_eks",
+                "BDH_HEALTH_CHECK_SYSTEM": " ",
+                "BDH_HEALTH_CHECK_DEFAULT": " "
+            }
+        },
+        {
+            "type": "docker",
+            "name": "deployment_operator_test_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/deployment_operator_test/Dockerfile",
+            "build_context": "../",
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_eks",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "build_only": false,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_eks",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "voratools_test_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/voratools_test/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_eks",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_eks",
+                "CONTINUES_INTEGRATION": "TRUE"
+            }
+        },
+        {
+            "type": "docker",
+            "name": "hanawire_test_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_eks",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_eks",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "GIT_REPO": "ssh://InfraBox@git.wdf.sap.corp:29418/hanalite-releasepack",
+                "TEST_FOLDER": "src/test/integration-test/hanawire",
+                "COMPONENT_TEST_NAME": "hanawire_test",
+                "COM_BUILD_ARG": "--build-arg HDBSQL_VERSION=2.4.21-ms --build-arg KUBECTL_CLI_VERSION=1.9.6-00 --build-arg HDBCLI_VERSION=2.3.14",
+                "GIT_BRANCH": "master",
+                "DOCKERFILE": "Dockerfile",
+                "BDH_HEALTH_CHECK_SYSTEM": " ",
+                "BDH_HEALTH_CHECK_DEFAULT": " "
+            }
+        },
+        {
+            "type": "docker",
+            "name": "log_collection_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_eks",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "import_export_test_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "voratools_test_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_eks",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "uninstall_eks",
+            "docker_file": "common/dockerfiles/ansible_runtime_eks",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "K8S_CREATION_JOB": "k8s_creation_eks",
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "PROVISION_PLATFORM": "AWS-EKS",
+                "OPERATION_TYPE": "UNINSTALL",
+                "FTPENABLE": "FALSE",
+                "FTPHOST": "10.47.221.67",
+                "FTPUSER": "infrabox_user",
+                "FTPPASS": "Sapvora123",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "build",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "install_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "import_export_test_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "voratools_test_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_eks",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "security_context": {
+                "privileged": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "k8s_deletion_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_eks"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "install_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "uninstall_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "import_export_test_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "voratools_test_eks",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_eks",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "timeout": 10800
+        },
+        {
+            "type": "docker",
+            "name": "job_report_eks",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_eks",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "k8s_deletion_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "install_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "uninstall_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "build_copy_files",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "voratools_test_eks",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "import_export_test_eks",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ],
+            "timeout": 7200
+        },
+        {
+            "type": "docker",
+            "name": "k8s_creation_gardener_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "PROVISION_PLATFORM": "GARDENER-AWS",
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "MAX_ERROR_RETRY_NUM": "3",
+                "MAX_REFUSE_WAIT": "7200",
+                "MAX_READY_WAIT": "3600",
+                "SYS_ACCOUNT": "system",
+                "SYS_PASSWORD": "@AHD90G2s3yls=",
+                "CREATE_TOTAL_TIMEOUT": "10800",
+                "MAX_CREATE_RETRY_NUM": "3"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 2048
+                }
+            },
+            "timeout": 12600
+        },
+        {
+            "type": "docker",
+            "name": "install_gardener_aws",
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 16384
+                }
+            },
+            "build_only": false,
+            "docker_file": "common/dockerfiles/ansible_runtime_gardener_aws",
+            "build_context": "../",
+            "build_arguments": {
+                "ANSIBLE_WORKSPACE": "common",
+                "SCRIPT_WORKSPACE": "fulcrum"
+            },
+            "security_context": {
+                "privileged": true
+            },
+            "environment": {
+                "K8S_CREATION_JOB": "k8s_creation_gardener_aws",
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "PROVISION_PLATFORM": "GARDENER-AWS",
+                "FTPENABLE": "FALSE",
+                "FTPHOST": "10.47.221.67",
+                "FTPUSER": "infrabox_user",
+                "FTPPASS": "Sapvora123",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                "ENABLE_AUTHENTICATION": "no",
+                "EXPOSE_PORT": "yes"
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "build",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "timeout": 10800
+        },
+        {
+            "type": "docker",
+            "name": "import_export_test_gardener_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/import_export_test/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gardener_aws",
+                "BDH_HEALTH_CHECK_SYSTEM": " ",
+                "BDH_HEALTH_CHECK_DEFAULT": " "
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 2048
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "deployment_operator_test_gardener_aws",
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "build_only": false,
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/deployment_operator_test/Dockerfile",
+            "build_context": "../",
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gardener_aws",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "voratools_test_gardener_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/voratools_test/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gardener_aws",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "hanawire_test_gardener_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gardener_aws",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "GIT_REPO": "ssh://InfraBox@git.wdf.sap.corp:29418/hanalite-releasepack",
+                "TEST_FOLDER": "src/test/integration-test/hanawire",
+                "COMPONENT_TEST_NAME": "hanawire_test",
+                "COM_BUILD_ARG": "--build-arg HDBSQL_VERSION=2.4.21-ms --build-arg KUBECTL_CLI_VERSION=1.9.6-00 --build-arg HDBCLI_VERSION=2.3.14",
+                "GIT_BRANCH": "master",
+                "DOCKERFILE": "Dockerfile",
+                "BDH_HEALTH_CHECK_SYSTEM": " ",
+                "BDH_HEALTH_CHECK_DEFAULT": " "
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "log_collection_gardener_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gardener_aws",
+                "CONTINUES_INTEGRATION": "TRUE"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 1,
+                    "memory": 1024
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "install_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "import_export_test_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "voratools_test_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "uninstall_gardener_aws",
+            "docker_file": "common/dockerfiles/ansible_runtime_gardener_aws",
+            "build_context": "../",
+            "build_only": false,
+            "environment": {
+                "K8S_CREATION_JOB": "k8s_creation_gardener_aws",
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "PROVISION_PLATFORM": "GARDENER-AWS",
+                "OPERATION_TYPE": "UNINSTALL",
+                "FTPENABLE": "FALSE",
+                "FTPHOST": "10.47.221.67",
+                "FTPUSER": "infrabox_user",
+                "FTPPASS": "Sapvora123",
+                "VORA_NAMESPACE_PREFIX": "vora-nightly"
+            },
+            "resources": {
+                "limits": {
+                    "cpu": 4,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "build",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "install_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "voratools_test_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "import_export_test_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ],
+            "security_context": {
+                "privileged": true
+            }
+        },
+        {
+            "type": "docker",
+            "name": "k8s_deletion_gardener_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+            "build_context": "../",
+            "timeout": 10800,
+            "environment": {
+                "SERVER_URL": "https://im-api.datahub.only.sap",
+                "K8S_CREATION_JOB": "k8s_creation_gardener_aws"
+            },
+            "build_only": false,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "install_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "uninstall_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "log_collection_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "voratools_test_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                },
+                {
+                    "job": "import_export_test_gardener_aws",
+                    "on": [
+                        "finished"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "docker",
+            "name": "job_report_gardener_aws",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+            "build_context": "../",
+            "timeout": 7200,
+            "environment": {
+                "PARENT_INSTALL_JOB": "install_gardener_aws",
+                "CONTINUES_INTEGRATION": "TRUE",
+                "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                "RESTAPI_PORT": "30711",
+                "RESTAPI_PATH": "/api/v1/trd/insert",
+                "USE_FOR": "NIGHTLY_VALIDATION",
+                "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                "INFRABOX_API_TOKEN": {
+                    "$secret": "INFRABOX_API_TOKEN"
+                }
+            },
+            "build_only": false,
+            "resources": {
+                "limits": {
+                    "cpu": 2,
+                    "memory": 4096
+                }
+            },
+            "depends_on": [
+                {
+                    "job": "k8s_creation_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "k8s_deletion_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "install_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "uninstall_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "build_copy_files",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "deployment_operator_test_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "hanawire_test_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "voratools_test_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                },
+                {
+                    "job": "import_export_test_gardener_aws",
+                    "on": [
+                        "*"
+                    ]
+                }
+            ]
+        }
+    ]
+}
+

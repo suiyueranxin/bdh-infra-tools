@@ -1,0 +1,12 @@
+---
+- name: generate the iam template
+  template:
+    src: kops_iam_policy.json.j2
+    dest: "/tmp/kops_iam_policy.json"
+  tags:
+    - install
+
+- name: put the iam policy
+  shell: "aws iam put-role-policy --role-name nodes.{{kops_k8s_cluster_name}}.{{kops_dns_zone}} --policy-name nodes.{{kops_k8s_cluster_name}}.{{kops_dns_zone}} --policy-document file:///tmp/kops_iam_policy.json"
+  tags:
+    - install

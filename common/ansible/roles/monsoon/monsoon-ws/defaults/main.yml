@@ -1,0 +1,4 @@
+# ws vars
+ws_name: docker_workstation
+ws_image: UBUNTU1404-x86_64
+ws_instance_type: medium_4_16

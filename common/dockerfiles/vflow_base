@@ -1,0 +1,6 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/vflow_test_base
+
+RUN pip install --upgrade pip requests
+RUN sed -i -re 's/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list && \
+    apt-get update && apt-get -y dist-upgrade
+

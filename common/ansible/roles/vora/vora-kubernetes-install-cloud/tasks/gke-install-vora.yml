@@ -1,0 +1,28 @@
+---
+- name: Set update install flag
+  set_fact:
+    install_flag: "--update"
+  tags:
+    - update
+
+- name: Set default install flag
+  set_fact:
+    install_flag: ""
+  tags:
+    - install
+
+- name: set installer env
+  set_fact:
+    installer_env:
+      KUBECONFIG: "{{gke_k8s_cluster_kubeconfig}}"
+  tags:
+    - install
+    - update
+
+- name: Starting vora installation process via slcb
+  include: gke-install-vora-slcb.yml
+  when: install_via_slcb == "true"
+
+- name: Starting vora installation process through install.sh
+  include: gke-install-vora-installer.yml
+  when: install_via_slcb == "false"

@@ -1,0 +1,6 @@
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: ssl-frontend-config
+spec:
+  sslPolicy: {{ gcloud_ssl_policy}}

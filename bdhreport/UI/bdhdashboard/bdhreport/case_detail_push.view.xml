@@ -1,0 +1,89 @@
+<core:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:t="sap.ui.table"
+		controllerName="bdhreport.case_detail_push" xmlns:html="http://www.w3.org/1999/xhtml" height="100%">
+	<Page title="Test Case Detail" enableScrolling="false">
+		<customHeader>
+			<Bar>
+				<contentLeft>
+					<Button tooltip="Back" type="Back" press="goBackDBList" />
+				</contentLeft>
+				<contentMiddle>
+					<Title text="Test Case Detail" titleStyle="H3" />
+				</contentMiddle>
+			</Bar>
+		</customHeader>
+		<content>
+			
+				<t:TreeTable
+                    id="caseListPush"
+                    rows="{path:'/dataList', parameters: {arrayNames:['job_test_runs']}}"
+                    selectionMode="None"
+                    enableSelectAll="false"
+                    ariaLabelledBy="title"
+                    visibleRowCount="20">
+                <t:extension>
+                    <Toolbar>
+                        <Title id="title" text="Test Cases"/>
+                        <ToolbarSpacer/>
+                        <Button icon="sap-icon://collapse-group" tooltip="Collapse all" press="onCollapseAll"/>                        
+                        <Button icon="sap-icon://expand-group" tooltip="Expand first level" press="onExpandFirstLevel"/>                        
+                    </Toolbar>
+                </t:extension>
+                <t:columns>
+                    <t:Column width="20rem">
+                        <Label text="Job"/>
+                        <t:template>
+                            <ObjectStatus
+								active="{= ${job_state} !== 'skipped' }"
+								tooltip="{job_name}"
+								press="toJobConsole"
+								text="{job_name}"
+								state="{
+									path: 'job_state',
+									formatter: '.showJobStatus'
+							}"/>
+                        </t:template>
+                    </t:Column>
+                    <t:Column width="15rem">
+                        <Label text="Test"/>
+                        <t:template>                           
+                            <Link tooltip="{test_name}" text="{test_name}" press="toCaseHistory"/>
+                        </t:template>
+                    </t:Column>
+                    <t:Column width="15rem">
+                        <Label text="Suite"/>
+                        <t:template>                      
+                            <Text text="{test_suite}" wrapping="true" tooltip="{test_suite}"/>
+                        </t:template>
+                    </t:Column>    
+                    <t:Column width="8rem">
+                        <Label text="Duration"/>
+                        <t:template>                      
+                            <Text text="{test_duration}" wrapping="false" />
+                        </t:template>
+                    </t:Column>  
+                    <t:Column width="6rem">
+                        <Label text="Result"/>
+                        <t:template>   
+                        	<Button press="onShowErrorMsg" type="{= ${test_state} === 'ok' ? 'Accept' : 'Reject' }" icon="{= ${test_state} === 'ok' ? 'sap-icon://accept' : 'sap-icon://decline' }" visible="{= ['ok','error','failure','skipped'].indexOf(${test_state}) > -1 }" tooltip="{test_state}" />
+                        </t:template>
+                    </t:Column>                       
+                    
+                    <t:Column width="6rem">
+                        <Label text="Action"/>
+                        <t:template>                  	
+                            <Button press="onShowInputDialog" tooltip="Add Bug Info" icon="sap-icon://edit" visible="{= ['ok','error','failure','skipped'].indexOf(${test_state}) > -1 }"/>
+                        </t:template>
+                    </t:Column>  
+                                 
+                     <t:Column>
+                        <Label text="Contacter"/>
+                        <t:template>
+                            <Text text="{test_owner}" wrapping="false" tooltip="{test_owner}"/>
+                        </t:template>
+                    </t:Column>
+                </t:columns>
+            </t:TreeTable>											
+		</content>
+		<footer></footer>
+	</Page>
+</core:View>

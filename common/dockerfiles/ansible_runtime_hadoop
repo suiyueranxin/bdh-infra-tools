@@ -1,0 +1,19 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ansible-runtime-base:latest
+
+ARG ANSIBLE_WORKSPACE
+ARG SCRIPT_WORKSPACE
+
+# Now copy auto deployment code
+COPY ${ANSIBLE_WORKSPACE}/ansible /ansible
+COPY ${SCRIPT_WORKSPACE}/script/bash/deployment_hadoop.sh /deployment_hadoop.sh
+COPY hera/ci/bdh-infra-tools/infrabox/service_check/junit_xml  /project/junit_xml
+COPY hera/ci/bdh-infra-tools/infrabox/service_check/six.py \
+     common/ansible/tools/bdh_health_check.py \
+     /project/
+
+RUN  chmod 600 /ansible/id_rsa && \
+     chmod +x /deployment_hadoop.sh
+
+WORKDIR /ansible/
+
+ENTRYPOINT /deployment_hadoop.sh

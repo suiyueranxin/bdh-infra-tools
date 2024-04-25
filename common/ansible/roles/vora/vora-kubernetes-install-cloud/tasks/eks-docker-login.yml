@@ -1,0 +1,23 @@
+---
+#docker registry check/docker login
+- block:
+  #- name: generate the docker login script
+  #  file:
+  #    path: "{{ role_path }}/files/aws_docker_login.sh"
+  #    mode: 0755
+
+  - name: docker login
+    shell: "{{ role_path }}/files/aws_docker_login.sh {{ aws_access_key }} {{ aws_secret_key }} {{ eks_aws_region }}"
+    environment:
+      DOCKER_REGISTRY: "{{ eks_docker_registry }}"
+    register: result_docker_login
+    tags:
+      - install
+      - update
+    no_log: true
+
+  - debug:
+      msg: "The result of docker login is: {{ result_docker_login.stdout }} {{ result_docker_login.stderr }}"
+    tags:
+      - install
+      - update

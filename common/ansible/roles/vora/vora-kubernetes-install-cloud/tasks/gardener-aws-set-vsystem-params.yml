@@ -1,0 +1,10 @@
+---
+- name: set parameters for docker regirstry
+  shell: "./vctl login https://vsystem.ingress.{{gardener_shoot_name}}.{{gardener_project_name}}.{{gardener_dns_zone}} default {{vora_username}} --password {{vora_password}}  --insecure;./vctl apps param set vflow.aws.iamRole 'arn:aws:iam::990498310577:role/shoot--datahub--{{gardener_shoot_name}}-ecr'"
+  ignore_errors: true
+  args:
+    executable: /bin/bash
+    chdir: "{{ installer_path }}/tools"
+  tags:
+    - install
+    - update

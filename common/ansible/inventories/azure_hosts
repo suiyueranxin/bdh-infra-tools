@@ -1,0 +1,15 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+
+[masters]
+name=zhaoxing-zeng-46-k8svora-master.westeurope.cloudapp.azure.com
+
+[all:vars]
+cluster_provider=azure
+master_name=zhaoxing-zeng-46-k8svora-master.westeurope.cloudapp.azure.com
+azure_resource_group=zhaoxing-zeng-46-k8svora
+azure_registry_name=registry20180418t085848
+azure_container_service_name=zhaoxing_container_service

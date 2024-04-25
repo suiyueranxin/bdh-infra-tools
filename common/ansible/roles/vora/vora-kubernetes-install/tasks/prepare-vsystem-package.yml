@@ -1,0 +1,48 @@
+---
+- name: Create installer workspace
+  file: path="{{installer_workspace}}" state=directory
+  tags:
+    - prep_package
+
+- name: Remove the old vora.tar.gz package
+  file: path="{{installer_workspace}}/vsystem.tar.gz" state=absent
+  tags:
+    - prep_package
+
+- name: Remove the old bdh-assembly-vsystem folder
+  file: path="{{installer_workspace}}/bdh-assembly-vsystem" state=absent
+  tags:
+    - prep_package
+
+- name: Copy Local Vora Package
+  copy: src={{ vsystem_local_pkg }} dest="{{installer_workspace}}/vsystem.tar.gz"
+  when: vsystem_local_pkg is defined
+  tags:
+    - prep_package
+
+# TODO the SAP might not be reachable from the masters[0] node depending on the infrastructure
+# We need to download to the workstation and copy it to the masters[0], as we do
+- name: Download vsystem package
+  get_url:
+    url: "{{ vsystem_download_url }}"
+    dest: "{{installer_workspace}}/vsystem.tar.gz"
+    validate_certs: no
+    timeout: 300
+  when: vsystem_local_pkg is not defined
+  tags:
+    - prep_package
+
+- name: Unarchive vsystem installer
+  unarchive: src="{{installer_workspace}}/vsystem.tar.gz" dest="{{installer_workspace}}/" copy=no
+  tags:
+    - prep_package
+
+- name: run prepare.sh of vsystem
+  shell: "./prepare.sh"
+  register: result_prepare_vsystem
+  args:
+    chdir: "{{installer_workspace}}/bdh-assembly-vsystem"
+
+- fail:
+    msg: "prepare the vsystem failed, the detail is: {{result_prepare_vsystem.stdout}} {{result_prepare_vsystem.stderr}}"
+  when: result_prepare_vsystem.rc != 0

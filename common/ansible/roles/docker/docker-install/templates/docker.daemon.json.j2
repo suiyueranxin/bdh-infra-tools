@@ -1,0 +1,4 @@
+{
+  "insecure-registries": ["{{ hostvars[groups['masters'][0]].ansible_default_ipv4.address }}:5000", "{{ docker_insecure_registry }}"],
+  "exec-opts": ["native.cgroupdriver={{ docker_cgroup_driver }}"]
+}

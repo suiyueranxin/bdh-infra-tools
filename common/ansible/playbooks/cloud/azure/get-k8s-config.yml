@@ -1,0 +1,6 @@
+---
+- include: ../../tasks-utils/update_private_key_permission.yml
+
+- hosts: workstation
+  roles:
+    - get-k8s-config

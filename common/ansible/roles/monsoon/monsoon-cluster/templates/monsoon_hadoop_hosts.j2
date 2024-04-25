@@ -1,0 +1,32 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+workers
+
+[workers:children]
+just_workers
+jumpbox
+
+[masters]
+{% for item in master_instances %}
+{{ item.public_dns_name }}
+{% endfor %}
+
+[just_workers]
+{% for item in worker_instances %}
+{% if not loop.first %}
+{{ item.public_dns_name }}
+{% endif %}
+{% endfor %}
+
+[jumpbox]
+{{ worker_instances[0].public_dns_name }}
+
+[all:vars]
+cluster_provider=monsoon
+ansible_ssh_common_args='-o ServerAliveInterval=600'
+# general Monsoon options
+# attached disk will be extended to this logical volume
+vol_to_extend=var

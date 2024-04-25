@@ -1,0 +1,4 @@
+FROM docker.wdf.sap.corp:50001/python:3.8-alpine
+RUN apk update && apk upgrade && \
+    apk add --no-cache git bash openssh-client
+RUN pip install --upgrade pip pylint==2.11.1

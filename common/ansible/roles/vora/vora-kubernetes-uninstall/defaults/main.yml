@@ -1,0 +1,28 @@
+sap_dh_bin_level: "milestone"
+vora_kube_prefix_url: 'https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub'
+vora_kube_suffix: 'Foundation'
+vora_kube_download_url: '{{vora_kube_prefix_url}}/{{ vorapkg_version }}/SAPDataHub-{{ vorapkg_version }}-{{ vora_kube_suffix }}.tar.gz'
+vora_uninstall_log: /tmp/vora_uninstall.log
+azure_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/azure/KUBECONFIG"
+installer_workspace: "/var"
+vora_kube_namespace: "vora"
+
+kops_aws_region: "eu-central-1"
+kops_docker_registry: "990498310577.dkr.ecr.{{kops_aws_region}}.amazonaws.com"
+kops_k8s_cluster_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/kops/KUBECONFIG"
+kops_dns_zone: "datahub.sapcloud.io"
+
+gcloud_project_id: sap-p-and-i-big-data-vora
+gke_docker_registry_name: "eu.gcr.io"
+gke_docker_registry_address: "{{ gke_docker_registry_name }}/{{ gcloud_project_id }}/{{ gcloud_docker_registry_suffix }}"
+
+gardener_aws_region: "eu-central-1"
+gardener_docker_registry: "990498310577.dkr.ecr.{{gardener_aws_region}}.amazonaws.com"
+gardener_shoot_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/gardener/KUBECONFIG"
+
+eks_aws_region: "us-west-2"
+eks_docker_registry: "990498310577.dkr.ecr.{{eks_aws_region}}.amazonaws.com"
+eks_k8s_cluster_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/eks/KUBECONFIG"
+eks_dns_zone: "datahub.sapcloud.io"
+
+azure_registry_name: infrabase

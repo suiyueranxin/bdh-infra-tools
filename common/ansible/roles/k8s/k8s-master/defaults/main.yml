@@ -1,0 +1,4 @@
+kubernetes_deploy_weave: true
+kubernetes_version: v{{k8s_version}}
+kubernetes_pod_ip_range: 172.2.0.0/16
+helm_version: v2.8.2

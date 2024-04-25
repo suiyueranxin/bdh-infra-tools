@@ -1,0 +1,17 @@
+FROM ubuntu:18.04
+
+RUN apt-get update && apt-get install -y curl && \
+    curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.9.6/bin/linux/amd64/kubectl && chmod +x kubectl && cp kubectl /bin/kubectl
+
+RUN apt-get update -y && apt-get install -y python2.7 python-pip && pip install --upgrade pip requests
+RUN pip install --upgrade pip && \
+    pip install --upgrade setuptools && \
+    pip install urllib3==1.25.3 && \
+    pip install kubernetes==10.0.1 && \
+    pip install requests==2.22.0 > /dev/null
+
+RUN apt update -y && apt upgrade -y && \
+    apt install -y apt-transport-https ca-certificates curl software-properties-common && \
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
+    apt update && apt install -y docker-ce

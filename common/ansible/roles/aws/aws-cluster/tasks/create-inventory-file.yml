@@ -1,0 +1,9 @@
+---
+- block:
+  - name: get the current inventory file name
+    set_fact:
+      current_inventory: "{{ inventory_file | basename }}"
+
+  - name: Create inventory file for aws Hosts (Ambari, Cloudera)
+    template: src={{ current_inventory }}.j2 dest={{ inventory_dir }}/{{ current_inventory }}
+  when: cluster_manager != "mapr"

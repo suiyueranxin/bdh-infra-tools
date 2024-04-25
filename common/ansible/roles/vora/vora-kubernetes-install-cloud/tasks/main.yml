@@ -1,0 +1,84 @@
+---
+- name: Download vora install package
+  include_role:
+    name: vora-kubernetes-install
+    tasks_from: prepare-vora-package
+  when: install_via_slcb is not defined or install_via_slcb == 'false'
+  tags:
+    - install
+    - update
+
+- name: ref the aws security info if it hide in security file
+  include_vars:
+    file: security-info-eks.yml
+  when: security_json_file is defined and security_json_file != "" and cloud_platform == "eks"
+  tags:
+    - install
+    - update
+
+- name: ref the azure security info if it hide in security file
+  include_vars:
+    file: security-info-aks.yml
+  when: security_json_file is defined and security_json_file != "" and cloud_platform == "azure-aks"
+  tags:
+    - install
+    - update
+
+- name: Creates tmp directory
+  file:
+    path: "{{ role_path }}/files/tmp/"
+    state: directory
+  ignore_errors: yes
+  tags:
+    - install
+
+- include_vars:
+    file: "{{role_path}}/files/vault-credential-vars.yml"
+  no_log: true
+  tags:
+    - install
+
+- name: Download ssl cert from artifacts
+  shell: 'curl --user {{ vault_cicd_jfrog_user_name }}:{{ vault_cicd_jfrog_api_key }} -k -Lo {{ role_path }}/files/tmp/crt.pem https://int.repositories.cloud.sap/artifactory/di-dev-cicd-generic/im/secret/cert/data-hub-cert-update/crt.pem'
+  ignore_errors: yes
+  no_log: true
+  tags:
+    - install
+
+- name: Download ssl key from artifacts
+  shell: 'curl --user {{ vault_cicd_jfrog_user_name }}:{{ vault_cicd_jfrog_api_key }} -k -Lo {{ role_path }}/files/tmp/key.pem https://int.repositories.cloud.sap/artifactory/di-dev-cicd-generic/im/secret/cert/data-hub-cert-update/key.pem'
+  ignore_errors: yes
+  no_log: true
+  tags:
+    - install
+
+- block:
+    - include: gke-install-prepare.yml
+    - include: gke-prepare-k8s.yml
+    - include: gke-install-vora.yml
+    - include: gke-expose-vora.yml
+    - include: gke-summary.yml
+  when: cloud_platform == "gke"
+
+- block:
+#    - include: azure-helm-init.yml
+    - include: azure-aks-install-vora.yml
+    - include: azure-aks-expose-vora.yml
+    - include: azure-aks-summary.yml
+  when: cloud_platform == "azure-aks"
+
+- block:
+    - include: eks-docker-login.yml    
+    - include: eks-prepare-k8s.yml
+    - include: eks-install-vora.yml
+    - include: eks-deploy-ingress.yml
+    - include: eks-summary.yml
+    - include: eks-set-vsystem-params.yml
+  when: cloud_platform == "eks"
+
+- block:
+    - include: gardener-prepare-vora.yml
+    - include: gardener-install-vora-slcb.yml
+    - include: gardener-expose-vora.yml
+    - include: gardener-summary.yml
+  when: cloud_platform == "gardener-ccloud"

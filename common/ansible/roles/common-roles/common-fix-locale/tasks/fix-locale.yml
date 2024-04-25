@@ -1,0 +1,15 @@
+---
+# On monsoon, the locale is often corrupted. This fixes the issue
+- name: Fix locale on ubuntu
+  shell: locale-gen "en_US.UTF-8"
+  become: yes
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+- name: Specify en_US.UTF-8 as locale in /etc/environment
+  lineinfile: dest=/etc/environment regexp="{{ item.regex }}" line="{{ item.line }}"
+  with_items:
+    - { regex: "^LC_ALL", line: "LC_ALL=en_US.UTF-8" }
+    - { regex: "^LANG", line: "LANG=en_US.UTF-8" }
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+

@@ -1,0 +1,12 @@
+---
+- debug:
+    msg: "This node is acting as master. Join token is applied for some period of time"
+
+- name: prepare master for joining
+  shell: kubeadm token delete {{ kubernetes_join_token }} ; kubeadm token create {{ kubernetes_join_token }} --ttl 3h
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: result_shell
+  until: result_shell.stdout.find(kubernetes_join_token) >= 0
+  retries: 3
+  delay: 30

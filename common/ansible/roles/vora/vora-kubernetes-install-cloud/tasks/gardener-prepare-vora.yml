@@ -1,0 +1,19 @@
+- set_fact:
+    installer_env:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+  tags:
+    - install
+    - update
+
+- set_fact:
+    install_flag: "--update"
+  tags:
+    - update
+
+- set_fact:
+    install_flag: ""
+  tags:
+    - install
+    - rescue
+
+# - include: "{{ role_path }}/../vora-kubernetes-install/tasks/deploy-minio.yml"

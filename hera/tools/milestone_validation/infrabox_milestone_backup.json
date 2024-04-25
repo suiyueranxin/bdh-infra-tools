@@ -1,0 +1,16 @@
+{
+    "clone_url": "https://github.wdf.sap.corp/bdh/bdh-infra-tools.git", 
+    "infrabox_file": "hera/di_backup_milestone_test_DUMMY_DEPLOY_TYPE.json", 
+    "type": "git", 
+    "name": "backup-restore-validation-DUMMY_DEPLOY_TYPE", 
+    "commit": "main",
+    "environment": {
+        "GERRIT_CHANGE_PROJECT": "hanalite-releasepack",
+        "GERRIT_CHANGE_BRANCH": "DUMMY_REPLACE_BRANCH",
+        "VORA_VERSION": "DUMMY_REPLACE_VERSION",
+        "VORA_KUBE_PREFIX_URL": "DUMMY_REPLACE_URL",
+        "VALIDATION_TYPE": "backup_restore_validation",
+        "CI_DASHBOARD_URL": "https://ci-dashboard.datahub.only.sap/api/pipelines/releasepack/job",
+        "BUBBLEUP_URL":"BUBBLEUP_URL_DUMMY"
+    }
+}

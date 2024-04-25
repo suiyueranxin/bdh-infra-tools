@@ -1,0 +1,31 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+workers
+
+[masters]
+master.ansible ansible_connection=docker ansible_user=root
+
+[workers:children]
+just_workers
+jumpbox
+
+[just_workers]
+worker1.ansible ansible_connection=docker ansible_user=root
+worker2.ansible ansible_connection=docker ansible_user=root
+
+[jumpbox]
+jumpbox.ansible ansible_connection=docker ansible_user=root
+
+[kubemaster]
+kubemaster.ansible
+
+# general Docker options
+[all:vars]
+docker_image=centos72-with-python
+cluster_provider=docker
+# paramters for k8s creation
+cluster_outbound_ip=xxx
+docker_registry_address=xxx

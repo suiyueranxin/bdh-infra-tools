@@ -1,0 +1,40 @@
+---
+- include: install-k8s-redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- include: install-k8s-ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
+
+- name: swap off
+  shell: "swapoff -a"
+
+- sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: basic kubelet systemd service configuration
+  template:
+    src: kubelet.service.j2
+    dest: /etc/systemd/system/kubelet.service
+
+- name: Create kubelet drop in config dir (systemd)
+  file:
+    name: /etc/systemd/system/kubelet.service.d
+    state: directory
+
+- name: adjust kubeadm configuration
+  template:
+    src: 10-kubeadm.conf.j2
+    dest: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+- systemd:
+    name: kubelet
+    daemon_reload: yes
+
+- service:
+    name: kubelet
+    state: started
+    enabled: yes

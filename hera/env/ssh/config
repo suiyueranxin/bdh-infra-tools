@@ -1,0 +1,19 @@
+StrictHostKeyChecking no
+UserKnownHostsFile /dev/null
+Host git.wdf.sap.corp
+  HostName git.wdf.sap.corp
+  Port 29418
+  User InfraBox
+  IdentityFile /root/.ssh/id_rsa-gerrit
+  IdentitiesOnly yes
+Host gitslave.wdf.sap.corp
+  HostName gitslave.wdf.sap.corp
+  Port 29418
+  User InfraBox
+  IdentityFile /root/.ssh/id_rsa-gerrit
+  IdentitiesOnly yes
+Host github.wdf.sap.corp
+  HostName github.wdf.sap.corp
+  User velobot
+  IdentityFile /root/.ssh/id_rsa
+  IdentitiesOnly yes

@@ -1,0 +1,23 @@
+{
+    "version": 1,
+    "jobs": [
+    {
+        "type": "docker",
+        "name": "job_report",
+        "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+        "resources": { "limits": { "cpu": 4, "memory": 4096 } },
+        "build_context": "/data/repo",
+        "build_only": false,
+        "environment": {
+            "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+            "RESTAPI_PORT": "30711",
+            "RESTAPI_PATH": "/api/v1/trd/insert",
+            "RESTAPI_EMAIL_PATH": "/api/v1/trd/email",
+            "DASHBOARD_URL": "https://dashboard.datahub.only.sap/nightly_job.jsp?build_id=",
+            "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+            "MANUALLY_BUILD_NUMBER": "82",
+            "MANUALLY_RESTART_COUNT": "1",
+            "USE_FOR": "NIGHTLY_VALIDATION"
+        }
+    }]
+}

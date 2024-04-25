@@ -1,0 +1,41 @@
+---
+- name: Create k8s cluster on Azure
+  azure:
+    resource_group_action: create
+    resource_group_name: "{{ resource_group_name }}"
+    location: "{{ azure_region }}"
+    registry_name: "{{ registry_name }}"
+    sku: "{{ sku }}"
+    admin_user_enabled: "{{ admin_user_enabled }}"
+    container_service_name: "{{ container_service_name }}"
+    cluster_name: "{{ cluster_name }}"
+    master_dns_prefix: "{{ master_dns_prefix }}"
+    master_type: "{{ master_instance_type }}"
+    master_count: "{{ master_count }}"
+    sshpublickey: "{{ sshpublickey }}"
+    linux_user: "{{ linux_user }}"
+    agent_name: "{{ agent_name }}"
+    agent_dns_prefix: "{{ agent_dns_prefix }}"
+    agent_type: "{{ worker_instance_type }}"
+    agent_count: "{{ number_of_workers }}"
+    agent_os_type: "{{ agent_os_type }}"
+    storage_accounts_name: "{{ storage_accounts_name }}"
+    storage_accounts_sku: "{{ storage_accounts_sku }}"
+    storage_accounts_kind: "{{ storage_accounts_kind }}"
+    subscription_id: "{{ subscription_id }}"
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant: "{{ tenant }}"
+  register: create_result
+
+- name: Set vars for inventory file template
+  set_fact:
+    azure_cluster_vars: "{{ create_result.response }}"
+
+- name: Debug the full cluster information
+  debug:
+    var: azure_cluster_vars
+
+- name: Set vars for inventory file template
+  set_fact:
+    master_name: "{{ create_result.response.service_master_name }}"

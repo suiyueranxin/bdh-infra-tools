@@ -1,0 +1,13 @@
+---
+- name: Set Vora uninstall command
+  set_fact:
+    installer_env:
+      KUBECONFIG: "{{ azure_kubeconfig }}"
+    installer_base_cmd: "--purge \
+                         --force-deletion \
+                         --namespace={{ vora_kube_namespace }} \
+                         --docker-registry={{ azure_registry_name }}.azurecr.io \
+                         --disable-installer-logging"
+  tags:
+    - uninstall
+

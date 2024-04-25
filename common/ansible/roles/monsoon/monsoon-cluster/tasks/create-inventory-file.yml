@@ -1,0 +1,13 @@
+---
+- block:
+  - name: get the current inventory file name
+    set_fact:
+      current_inventory: "{{ inventory_file | basename }}"
+
+- name: Create inventory file for Monsoon Hosts
+  template: src={{ current_inventory }}.j2 dest={{ inventory_dir }}/{{ current_inventory }}
+  when: cluster_manager != "mapr"
+
+- name: Create inventory file for Monsoon Hosts (MapR)
+  template: src={{ current_inventory }}.j2 dest={{ inventory_dir }}/{{ current_inventory }}
+  when: cluster_manager == "mapr"

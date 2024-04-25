@@ -1,0 +1,21 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/ansible-post-deployment:latest
+
+RUN pip install -U requests[security] && \
+    pip install pyhdb
+
+ARG WORKSPACE
+
+RUN mkdir -p /project
+
+COPY ${WORKSPACE}/script/python/post_deployment_hana.py /project/post_deployment_hana.py
+COPY ${WORKSPACE}/script/python/utilities.py /project/utilities.py
+COPY ${WORKSPACE}/script/python/k8s_client.py /project/k8s_client.py
+COPY ${WORKSPACE}/script/python/clusterInstDB.py /project/clusterInstDB.py
+COPY ${WORKSPACE}/script/python/postgres.py /project/postgres.py
+COPY ${WORKSPACE}/script/python/send_mail.py /project/send_mail.py
+COPY ${WORKSPACE}/script/python/ansible_client.py /project/ansible_client.py
+COPY ${WORKSPACE}/templates/* /project/
+
+RUN chmod +x /project/*.py
+
+CMD python /project/post_deployment_hana.py

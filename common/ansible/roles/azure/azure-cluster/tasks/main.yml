@@ -1,0 +1,7 @@
+---
+- name: ref microsoftware azure common vars
+  include_vars:
+    file: "{{ role_path }}/../azure-vars.yml"
+
+- include: create_k8s_cluster.yml
+- include: create-inventory-file.yml

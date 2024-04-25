@@ -1,0 +1,8 @@
+---
+
+- include: k8s-join-master.yml
+  when: kubernetes_node_role == "master"
+
+
+- include: k8s-join-worker.yml
+  when: kubernetes_node_role == "worker"

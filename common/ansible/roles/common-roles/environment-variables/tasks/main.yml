@@ -1,0 +1,24 @@
+---
+- name: Update No proxy setting to contain IP Address of all nodes in /etc/environment
+  replace:
+    backup: yes
+    dest: "/etc/environment"
+    regexp: '^(no_proxy(?!.*,{{ no_proxy_address }}).*)$'
+    replace: '\1,{{no_proxy_address}}'
+  when: no_proxy_address is defined and ansible_connection != 'docker'
+
+- name: Remove the no_proxy setting in profile.d/proxy_settings.sh
+  lineinfile:
+    path: "/etc/profile.d/proxy_settings.sh"
+    state: absent
+    regexp: '^export no_proxy'
+  when: cluster_provider|default() == "monsoon"
+
+- name: Append environment config to /etc/environment
+  lineinfile: dest=/etc/environment line="{{item.key}}={{item.value}}" state=present
+  with_dict: "{{environment_config |default({})}}"
+  when: environment_config is defined
+
+- name: Append path config to /etc/environment
+  replace: dest=/etc/environment regexp="^PATH=\"(.+)\"" replace="PATH=\"{{path_config |default(omit)}}:\1\""
+  when: path_config is defined

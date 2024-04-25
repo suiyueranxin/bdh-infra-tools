@@ -1,0 +1,15 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: vsystem-load-balancer
+  namespace: {{ vora_kube_namespace }}
+spec:
+  selector:
+    app: vora
+    vora-component: vsystem
+  ports:
+  - protocol: TCP
+    port: 443
+    targetPort: 8797
+  loadBalancerIP: {{ public_ip_address }}
+  type: LoadBalancer

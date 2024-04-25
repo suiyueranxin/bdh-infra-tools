@@ -1,0 +1,51 @@
+---
+- name: Create worker machines on AWS
+  ec2:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    zone: "{{ aws_cluster_zone }}"
+    image: "{{ worker_image }}"
+    instance_type: "{{ worker_instance_type }}"
+    count: "{{ number_of_workers }}"
+    key_name: "{{ aws_key_name}}"
+    group_id: "{{ aws_security_group_id }}"
+    wait: yes
+    wait_timeout: 1000
+    user_data: "#!/bin/bash\nmkdir -p /root/.ssh\ncat>>/root/.ssh/authorized_keys<<EOF\n{{ lookup('file', 'id_rsa.pub') }}\n"
+    vpc_subnet_id: "{{ aws_vpc_subnet_id }}"
+    region: "{{ aws_region }}"
+    assign_public_ip: "yes"
+    volumes:
+    - device_name: "{{ device_name }}"
+      device_type: "{{ aws_device_type }}"
+      volume_size: "{{ aws_volume_size }}"
+      delete_on_termination: true
+    validate_certs: no
+  register: created_workers
+
+- name: Set create_workers as fact for inventory file template
+  set_fact:
+    worker_instances: "{{ created_workers.instances }}"
+
+- block:
+  - name: Create worker tag sequence
+    debug:
+      msg: "{{ item }}"
+    with_sequence: start=0 count="{{ number_of_workers }}" format="{{ worker_name_prefix }}%02d"
+    no_log: True
+    register: worker_tags
+
+  - name: Tag worker instances
+    ec2_tag:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      ec2_url: "{{ ec2_endpoint_url }}"
+      resource: "{{ item.0.id }}"
+      validate_certs: no
+      tags:
+        Name: "{{ item.1.msg }}"
+    with_together:
+      - "{{ created_workers.instances }}"
+      - "{{ worker_tags.results }}"
+  when: number_of_workers > 0

@@ -1,0 +1,46 @@
+---
+- block:
+  - name: set fact for aws key
+    set_fact:
+      eks_aws_env:
+        KUBECONFIG: "{{ playbook_dir }}/KUBECONFIG"
+
+  - name: get eks api endpoint
+    shell: "aws eks describe-cluster --region {{ eks_aws_region }} --name {{ eks_k8s_cluster_name }} --query cluster.endpoint"
+    environment:
+      "{{ eks_aws_env }}"
+    register: api_endpoint
+    until: api_endpoint.stdout != "" and api_endpoint.rc == 0
+    retries: 10
+    delay: 60
+
+  - name: set fact for api endpoint
+    set_fact:
+      k8s_api_endpoint: " {{ api_endpoint.stdout }} "
+
+  - name: get api client certificate
+    shell: "aws eks describe-cluster --region {{ eks_aws_region }} --name {{ eks_k8s_cluster_name }} --query cluster.certificateAuthority.data"
+    environment:
+      "{{ eks_aws_env }}"
+    register: api_certificate
+    until: api_certificate.stdout != "" and api_certificate.rc == 0
+    retries: 10
+    delay: 60
+
+  - name: set fact for api client certificate
+    set_fact:
+      k8s_api_certificate: " {{ api_certificate.stdout }} "
+  tags:
+    - update
+
+#add
+- block:
+  - name: check bucket is already exist or not
+    shell: "aws s3api list-buckets"
+    register: result_bucket_list
+
+  - name: create s3 bucket folder for checkpoint
+    shell: "aws s3api put-object --bucket {{eks_aws_s3_bucket_name}} --key {{eks_k8s_cluster_name}}/{{vora_kube_namespace}}/"
+  tags:
+    - uninstall
+

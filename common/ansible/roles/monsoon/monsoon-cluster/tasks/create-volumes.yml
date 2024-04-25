@@ -1,0 +1,16 @@
+---
+- name: Create Monsoon volume
+  ec2_vol:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    region: "{{ monsoon_region }}"
+    zone: "{{ monsoon_zone }}"
+    volume_size: "{{monsoon_volume_size}}"
+    validate_certs: no
+    device_name: ansible_disk
+    delete_on_termination: yes
+    instance: "{{ item.id }}"
+  with_items: "{{ machines }}"
+  environment:
+    BOTO_ENDPOINTS: "{{ role_path }}/files/boto_endpoints.json"

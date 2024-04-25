@@ -1,0 +1,1 @@
+export COMMIT_ID_MASTER=master

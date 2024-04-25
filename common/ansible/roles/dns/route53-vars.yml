@@ -1,0 +1,4 @@
+#this access key only has route53 permission
+dns_zone: datahub.sapcloud.io
+record_type: A
+route53_im_api_url: https://im-api.datahub.only.sap/api/v1/clusters/route53

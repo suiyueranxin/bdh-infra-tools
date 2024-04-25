@@ -1,0 +1,12 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_vsystem_test_base:go1.13.3
+RUN echo http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/edge/community >> /etc/apk/repositories && \
+    apk add --no-cache --update docker=17.12.1-r0 > /dev/null && \
+    curl -LO https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz && \
+    tar -zxf google-cloud-sdk.tar.gz && mv \
+    google-cloud-sdk /bin/google-cloud-sdk && \
+    ln -s /bin/google-cloud-sdk/bin/gcloud /bin/gcloud
+RUN pip install --upgrade pip && \
+    pip install --upgrade setuptools && \
+    pip install urllib3==1.25.3 && \
+    pip install kubernetes==10.0.1 && \
+    pip install requests==2.22.0 > /dev/null

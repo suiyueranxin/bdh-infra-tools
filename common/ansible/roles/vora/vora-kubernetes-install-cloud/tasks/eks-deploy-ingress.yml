@@ -1,0 +1,179 @@
+---
+- block:
+  - name: copy vsystem ssl crt.pem from repo
+    stat:
+      path: "{{ role_path }}/files/tmp/crt.pem"
+    tags:
+      - install
+    register: stat_crt_result
+
+  - name: copy vsystem ssl key.pem from repo
+    stat:
+      path: "{{ role_path }}/files/tmp/key.pem"
+    tags:
+      - install
+    register: stat_key_result
+
+  - name: if ssl files exist already
+    shell: "kubectl -n {{ vora_kube_namespace }} create secret tls vsystem-tls-certs --key {{ role_path }}/files/tmp/key.pem --cert {{ role_path }}/files/tmp/crt.pem"
+    environment:
+      KUBECONFIG: "{{ eks_k8s_cluster_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+    when: stat_crt_result.stat.exists == True and stat_key_result.stat.exists == True
+
+  - name: create vsystem tls certs
+    shell: "kubectl -n {{ vora_kube_namespace }} create secret tls vsystem-tls-certs --key {{ role_path }}/files/key.pem --cert {{ role_path }}/files/crt.pem"
+    environment:
+      KUBECONFIG: "{{ eks_k8s_cluster_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+    when: stat_crt_result.stat.exists == False or stat_key_result.stat.exists == False
+
+  - name: generate the ingress.yaml to tmp dir
+    template:
+      src: eks_ingress.yaml.j2
+      dest: "{{ installer_workspace }}/ingress_{{ eks_k8s_cluster_name }}.yaml"
+    tags:
+      - install
+
+  - name: display vsystem ingress
+    shell: "cat {{ installer_workspace }}/ingress_{{ eks_k8s_cluster_name }}.yaml"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    tags:
+      - install
+      - rescue
+
+  - name: deploy the ingress
+    shell: "kubectl create -n {{ vora_kube_namespace }} -f {{ installer_workspace }}/ingress_{{ eks_k8s_cluster_name }}.yaml"
+    environment:
+      KUBECONFIG: "{{ eks_k8s_cluster_kubeconfig }}"
+    tags:
+      - install
+
+  - name: wait until the ingress address is ready
+    shell: "kubectl get ingress vsystem -n {{ vora_kube_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'"
+    environment:
+      KUBECONFIG: "{{ eks_k8s_cluster_kubeconfig }}"
+    register: result_describe_ingress
+    until: result_describe_ingress.stdout != ""
+    retries: 10 # Wait for 10 minutes max
+    delay: 60
+    tags:
+      - install
+
+  - debug:
+      msg: "the ingress address: {{ result_describe_ingress.stdout }}"
+    tags:
+      - install
+  when: expose_vsystem == "yes"
+
+- block:
+  - name: create route53 recordset
+    route53:
+      command: create
+      zone: "{{ eks_dns_zone }}"
+      record: "{{ eks_k8s_cluster_name | replace('_', '-') }}-eks.infra.{{ eks_dns_zone }}"
+      ttl: 300
+      type: "CNAME"
+      value: "{{ result_describe_ingress.stdout }}"
+    tags:
+      - install
+  - debug:
+      msg: "The vsystem url is: https://{{ eks_k8s_cluster_name | replace('_', '-') }}-eks.infra.{{ eks_dns_zone }}"
+    tags:
+      - install
+  when: expose_vsystem == "yes"
+
+#expose vsystem ingress
+- block:
+  - name: expose vsystem node port
+    shell: "kubectl -n {{ vora_kube_namespace }} expose service vsystem --type NodePort --name=vsystem-ext"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: patch vsystem-ext service
+    shell: "kubectl -n {{ vora_kube_namespace }} patch service vsystem-ext -p '{\"spec\": {\"ports\" : [{\"name\": \"vsystem-ext\", \"port\" : 8797}]}}'"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  - name: patch vsystem-ext service
+    shell: "kubectl -n {{ vora_kube_namespace }} annotate service vsystem-ext service.beta.kubernetes.io/app-protocols='{\"vsystem-ext\":\"HTTPS\"}'"
+    environment:
+      "{{ installer_env }}"
+    tags:
+      - install
+
+  when: expose_vsystem == "yes"
+  
+# expose tx-coordinator
+- block:
+  - name: expose vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-tx-coordinator-ext --type LoadBalancer --name=tx-coordinator-service-ext --labels='datahub.sap.com/app=vora'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_txc_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service tx-coordinator-service-ext service.beta.kubernetes.io/aws-load-balancer-internal='0.0.0.0/0' || true && \
+            kubectl -n {{vora_kube_namespace}} annotate service tx-coordinator-service-ext service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout='3600'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_txc_result.stdout}}"
+    tags:
+      - install
+  when: expose_vora_txc == "yes"
+
+# expose text-analysis
+- block:
+  - name: expose text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-textanalysis --type LoadBalancer --name=text-analysis-service-ext"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_text_analysis_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service text-analysis-service-ext service.beta.kubernetes.io/aws-load-balancer-internal='0.0.0.0/0' || true && \
+            kubectl -n {{vora_kube_namespace}} annotate service text-analysis-service-ext service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout='3600'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_text_analysis_result.stdout}}"
+    tags:
+      - install
+  when: expose_text_analysis == "yes"

@@ -1,0 +1,7 @@
+- name: generate gke summary file
+  template:
+    src: gke_summary.j2
+    dest: "{{ playbook_dir }}/summary.log"
+  tags:
+   - install
+   - update

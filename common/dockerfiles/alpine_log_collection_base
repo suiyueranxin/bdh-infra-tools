@@ -1,0 +1,10 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_python_base:latest
+
+RUN pip install packaging > /dev/null
+RUN pip install es2csv==5.5.2 > /dev/null
+COPY common/dockerfiles/es2csv.py /usr/lib/python2.7/site-packages/es2csv.py
+RUN apk add build-base python-dev freetype-dev libpng-dev
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.20.5/bin/linux/amd64/kubectl && chmod +x kubectl && cp kubectl /bin/kubectl
+RUN pip install --upgrade pip && pip install wheel numpy==1.16.6 pandas==0.22.0 -i http://pypi.mirrors.ustc.edu.cn/simple --trusted-host pypi.mirrors.ustc.edu.cn
+RUN pip install matplotlib==2.2.5 -i http://pypi.mirrors.ustc.edu.cn/simple --trusted-host pypi.mirrors.ustc.edu.cn
+RUN rm -rf /root/.cache/pip/*

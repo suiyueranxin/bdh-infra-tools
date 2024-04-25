@@ -1,0 +1,3 @@
+---
+- name: Create inventory file for gcloud Hosts
+  template: src=gcloud_hosts.j2 dest={{ inventory_dir }}/gcloud_hosts

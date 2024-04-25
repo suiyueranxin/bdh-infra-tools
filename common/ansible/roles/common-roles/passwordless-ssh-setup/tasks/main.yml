@@ -1,0 +1,19 @@
+---
+# Todo: Basically we have to deal with 2 users, ansible_user and ansible_become_user.
+#       The first one is used for ssh access (when root used is blocked for ssh),
+#       the second one is used for the instrumentation (usually root).
+#       We need to adjust for this scenario (for AWS, this is standard)
+#
+#- debug: msg="ansible_user={{ ansible_user }}"               --> centos
+#- debug: msg="ansible_become_user={{ ansible_become_user }}" --> root
+#
+
+- name: create /root/.ssh folder if it doesn't exist
+  file: path=/root/.ssh state=directory owner=root group=root mode=0700
+
+- name: install id_rsa for passwordless ssh into worker boxes (root)
+  copy: src=id_rsa dest=/root/.ssh/id_rsa mode=0600 owner=root group=root
+
+- authorized_key:
+    user: root
+    key: "{{ lookup('file', 'id_rsa.pub') }}"

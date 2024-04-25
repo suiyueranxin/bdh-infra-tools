@@ -1,0 +1,1778 @@
+{
+    "infrabox_json": {
+        "jobs": [
+            {
+                "build_only": false,
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_creation/Dockerfile",
+                "environment": {
+                    "CREATE_TOTAL_TIMEOUT": "10800",
+                    "MAX_CREATE_RETRY_NUM": "3",
+                    "MAX_ERROR_RETRY_NUM": "3",
+                    "MAX_READY_WAIT": "3600",
+                    "MAX_REFUSE_WAIT": "7200",
+                    "PROVISION_PLATFORM": "GKE",
+                    "SERVER_URL": "https://im-api.datahub.only.sap",
+                    "SYS_ACCOUNT": "system",
+                    "SYS_PASSWORD": "@AHD90G2s3yls=",
+                    "USE_FOR": "MILESTONE_VALIDATION"
+                },
+                "name": "k8s_creation_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "timeout": 12600,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "common/dockerfiles/ansible_runtime_gcloud",
+                "environment": {
+                    "ENABLE_AUTHENTICATION": "no",
+                    "EXPOSE_PORT": "yes",
+                    "FTPENABLE": "FALSE",
+                    "FTPHOST": "10.47.221.67",
+                    "FTPPASS": "Sapvora123",
+                    "FTPUSER": "infrabox_user",
+                    "GCP_APPLICATION_CREDENTIALS": "/google_credentials.txt",
+                    "GCP_PROJECT_ID": "sap-p-and-i-big-data-vora",
+                    "K8S_CREATION_JOB": "k8s_creation_gke",
+                    "PROVISION_PLATFORM": "GKE",
+                    "SKIP_VSYSTEM_ASSEMBLY": "yes",
+                    "USE_FOR": "MILESTONE_VALIDATION",
+                    "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+                    "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                    "VORA_VERSION": "2.7.32-ms",
+                    "VSYSTEM_VERSION": "1.4.3"
+                },
+                "name": "install_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 4096
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "timeout": 10800,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/e2e_smoke_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/app_test/Dockerfile",
+                "environment": {
+                    "CLOUD_ONLY": "1",
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "MAX_RUN": "1",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "dh_test_server_ADL": {
+                        "$secret": "dh_test_server_ADL"
+                    },
+                    "dh_test_server_AWS_HDFS_KERBEROS_RPC": {
+                        "$secret": "dh_test_server_AWS_HDFS_KERBEROS_RPC"
+                    },
+                    "dh_test_server_AWS_HDFS_KERBEROS_WEBHDFS": {
+                        "$secret": "dh_test_server_AWS_HDFS_KERBEROS_WEBHDFS"
+                    },
+                    "dh_test_server_DATASERVICES": {
+                        "$secret": "dh_test_server_DATASERVICES"
+                    },
+                    "dh_test_server_DB2": {
+                        "$secret": "dh_test_server_DB2"
+                    },
+                    "dh_test_server_GBQ": {
+                        "$secret": "dh_test_server_GBQ"
+                    },
+                    "dh_test_server_GCP_DATASERVICES": {
+                        "$secret": "dh_test_server_GCP_DATASERVICES"
+                    },
+                    "dh_test_server_GCP_HANA": {
+                        "$secret": "dh_test_server_GCP_HANA"
+                    },
+                    "dh_test_server_GCP_HDFS_RPC": {
+                        "$secret": "dh_test_server_GCP_HDFS_RPC"
+                    },
+                    "dh_test_server_GCP_HDFS_WEBHDFS": {
+                        "$secret": "dh_test_server_GCP_HDFS_WEBHDFS"
+                    },
+                    "dh_test_server_GCP_KAFKA": {
+                        "$secret": "dh_test_server_GCP_KAFKA"
+                    },
+                    "dh_test_server_GCP_MSSQL": {
+                        "$secret": "dh_test_server_GCP_MSSQL"
+                    },
+                    "dh_test_server_GCP_MYSQL": {
+                        "$secret": "dh_test_server_GCP_MYSQL"
+                    },
+                    "dh_test_server_GCP_ORACLE": {
+                        "$secret": "dh_test_server_GCP_ORACLE"
+                    },
+                    "dh_test_server_GCS": {
+                        "$vault": "dev-infra-ci-cd",
+                        "$vault_secret_path": "secret/internal-system/IM/GCP/sap-p-and-i-big-data-vora/im-gcs",
+                        "$vault_secret_key": "credential_milestone"
+                    },
+                    "dh_test_server_S3": {
+                        "$secret": "dh_test_server_S3"
+                    },
+                    "dh_test_server_WASB": {
+                        "$secret": "dh_test_server_WASB"
+                    }
+                },
+                "name": "e2e_smoke_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 4096
+                    }
+                },
+                "timeout": 7200,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/voratools_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/voratools_test/Dockerfile",
+                "environment": {
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "PARENT_INSTALL_JOB": "install_gke"
+                },
+                "name": "voratools_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 1,
+                        "memory": 1024
+                    }
+                },
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "*"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/import_export_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/import_export_test/Dockerfile",
+                "environment": {
+                    "PARENT_INSTALL_JOB": "install_gke"
+                },
+                "name": "import_export_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 1,
+                        "memory": 2048
+                    }
+                },
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "KUBECTL_CLI_VERSION": "1.9.5"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/vflow_flowagent_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/vflow_components_test/Dockerfile",
+                "environment": {
+                    "COMPONENT_NAME": "FLOWAGENT",
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "EXTERNAL_FLAG": " --external",
+                    "GIT_REPO": "git@github.wdf.sap.corp:bdh/datahub-flowagent.git",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "RETRY_TEST": "3"
+                },
+                "name": "vflow_flowagent_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 1,
+                        "memory": 1024
+                    }
+                },
+                "timeout": 18000,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/vflow_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+                "environment": {
+                    "COMPONENT": "VFLOW",
+                    "COMPONENT_TEST_NAME": "vflow_test",
+                    "COM_DOCKER_IMAGE": "docker.wdf.sap.corp:51022/com.sap.datahub.linuxx86_64/vflow-integration-test",
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "EXTERNAL_FLAG": " --external",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "RETRY_TEST": "3",
+                    "SCENARIO_LIST": "basic advanced.vsolution.machine-learning.tensorflow.ml-trainmnist advanced.google-pubsub",
+                    "SKIP_TESTS": "basic.subengine basic.Kafka basic.HDFS",
+                    "VFLOW_GRAPH_TEST": "TRUE"
+                },
+                "name": "vflow_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 8192
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "timeout": 18000,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/vflow_components_test/Dockerfile",
+                "environment": {
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "EXTERNAL_FLAG": " --external",
+                    "GIT_REPO": "ssh://InfraBox@git.wdf.sap.corp:29418/hanalite",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "RETRY_TEST": "3",
+                    "VFLOW_COM_BRANCH": "master"
+                },
+                "name": "vflow_ta_connector_operator_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/vflow_authorization-scenario_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/vflow_test/Dockerfile",
+                "environment": {
+                    "EXTERNAL_FLAG": " --external",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "RETRY_TEST": "3",
+                    "SCENARIO_LIST": "releasepack.authorization-scenario"
+                },
+                "name": "vflow_authorization-scenario_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/vflow_data_transform_scenario_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/vflow_test/Dockerfile",
+                "environment": {
+                    "EXTERNAL_FLAG": " --external",
+                    "HDFS_CONNECTION_ID": "BLR_TEST_HDFS",
+                    "HDFS_ENDPOINT": "dataproc-im-validation-m",
+                    "HDFS_PORT": "9870",
+                    "HDFS_PROTOCOL": "webhdfs",
+                    "HDFS_USER": "hdfs",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "RETRY_TEST": "3",
+                    "SCENARIO_LIST": "releasepack.data-transform"
+                },
+                "name": "vflow_data_transform_scenario_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/vflow_datahub_dq_integration_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/vflow_test/Dockerfile",
+                "environment": {
+                    "COMPONENT": "DQ_INTEGRATION",
+                    "COMPONENT_TEST_NAME": "vflow_datahub_dq_integration_test",
+                    "COM_DOCKER_IMAGE": "docker.wdf.sap.corp:51022/com.sap.datahub.linuxx86_64/dq-integration-vflow-integration-test",
+                    "EXTERNAL_FLAG": " --external",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "RETRY_TEST": "3",
+                    "SCENARIO_LIST": "releasepack.datahub-dq-integration",
+                    "VFLOW_GRAPH_TEST": "TRUE"
+                },
+                "name": "vflow_datahub_dq_integration_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "SCRIPT_WORKSPACE": "fulcrum"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+                "environment": {
+                    "COMPONENT_TEST_NAME": "hanawire_test",
+                    "COM_BUILD_ARG": "--build-arg HDBSQL_VERSION=2.4.21-ms --build-arg KUBECTL_CLI_VERSION=1.9.6-00 --build-arg HDBCLI_VERSION=2.3.14",
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "DOCKERFILE": "Dockerfile",
+                    "ENABLE_DEPLOYMENTS": "yes",
+                    "GIT_BRANCH": "master",
+                    "GIT_REPO": "ssh://InfraBox@git.wdf.sap.corp:29418/hanalite-releasepack",
+                    "JOB_NAME": "hanawire_test_gke",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "TEST_FOLDER": "src/test/integration-test/hanawire"
+                },
+                "name": "hanawire_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "PLATFORM": "gke"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/vsystem_api_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/vsystem_api_test/Dockerfile",
+                "environment": {
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "PARENT_INSTALL_JOB": "install_gke"
+                },
+                "name": "vsystem_api_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "timeout": 10800,
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "SCRIPT_WORKSPACE": "fulcrum"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+                "environment": {
+                    "COMPONENT_TEST_NAME": "streaming_tables_test",
+                    "DOCKERFILE": "Dockerfile",
+                    "ENABLE_DEPLOYMENTS": "yes",
+                    "GIT_BRANCH": "master",
+                    "GIT_REPO": "ssh://InfraBox@git.wdf.sap.corp:29418/hanalite-releasepack",
+                    "JOB_NAME": "streaming_tables_test_gke",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "TEST_FOLDER": "src/test/integration-test/streaming-tables"
+                },
+                "name": "streaming_tables_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 1,
+                        "memory": 1024
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "SCRIPT_WORKSPACE": "fulcrum"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+                "environment": {
+                    "COMPONENT": "VSYSTEM_UI",
+                    "COMPONENT_TEST_NAME": "launchpad_ui_e2e_test",
+                    "COM_BUILD_ARG": "--build-arg E2E_APP_NAME=dh-launchpad-ui",
+                    "DOCKERFILE": "Dockerfile",
+                    "GIT_REPO": "git@github.wdf.sap.corp:velocity/vsystem-ui.git",
+                    "PARENT_INSTALL_JOB": "install_gke"
+                },
+                "name": "launchpad_ui_e2e_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "timeout": 3600,
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "SCRIPT_WORKSPACE": "fulcrum"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+                "environment": {
+                    "COMPONENT": "VSYSTEM_UI",
+                    "COMPONENT_TEST_NAME": "vsystem_ui_e2e_test",
+                    "COM_BUILD_ARG": "--build-arg E2E_APP_NAME=dh-vsystem-ui",
+                    "DOCKERFILE": "Dockerfile",
+                    "ENABLE_DEPLOYMENTS": "yes",
+                    "GIT_REPO": "git@github.wdf.sap.corp:velocity/vsystem-ui.git",
+                    "JOB_NAME": "vsystem_ui_e2e_test_gke",
+                    "PARENT_INSTALL_JOB": "install_gke"
+                },
+                "name": "vsystem_ui_e2e_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "timeout": 3600,
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "SCRIPT_WORKSPACE": "fulcrum"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+                "environment": {
+                    "COMPONENT_TEST_NAME": "vora_tools_ui_e2e_test",
+                    "DATA_TOOLS_APP_PATH": "vora",
+                    "DOCKERFILE": "Dockerfile",
+                    "GIT_BRANCH": "master",
+                    "GIT_REPO": "git@github.wdf.sap.corp:velocity/data-tools-ui.git",
+                    "PARENT_INSTALL_JOB": "install_gke"
+                },
+                "name": "vora_tools_ui_e2e_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 2048
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "timeout": 1800,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "e2e_smoke_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    }
+                ],
+                "deployments": [
+                    {
+                        "always_push": "true",
+                        "host": "di-dev-cicd-docker.int.repositories.cloud.sap",
+                        "repository": "bdh-infra-tools/troubleshooting/e2e_scenario_test_gke",
+                        "type": "docker-registry"
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/app_test/Dockerfile",
+                "environment": {
+                    "CLOUD_ONLY": "1",
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "MAX_RUN": "1",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "VALIDATION_TYPE": "SCENARIO_VALIDATION",
+                    "dh_test_server_ADL": {
+                        "$secret": "dh_test_server_ADL"
+                    },
+                    "dh_test_server_AWS_HDFS_KERBEROS_RPC": {
+                        "$secret": "dh_test_server_AWS_HDFS_KERBEROS_RPC"
+                    },
+                    "dh_test_server_AWS_HDFS_KERBEROS_WEBHDFS": {
+                        "$secret": "dh_test_server_AWS_HDFS_KERBEROS_WEBHDFS"
+                    },
+                    "dh_test_server_DATASERVICES": {
+                        "$secret": "dh_test_server_DATASERVICES"
+                    },
+                    "dh_test_server_DB2": {
+                        "$secret": "dh_test_server_DB2"
+                    },
+                    "dh_test_server_GBQ": {
+                        "$secret": "dh_test_server_GBQ"
+                    },
+                    "dh_test_server_GCP_DATASERVICES": {
+                        "$secret": "dh_test_server_GCP_DATASERVICES"
+                    },
+                    "dh_test_server_GCP_HANA": {
+                        "$secret": "dh_test_server_GCP_HANA"
+                    },
+                    "dh_test_server_GCP_HDFS_RPC": {
+                        "$secret": "dh_test_server_GCP_HDFS_RPC"
+                    },
+                    "dh_test_server_GCP_HDFS_WEBHDFS": {
+                        "$secret": "dh_test_server_GCP_HDFS_WEBHDFS"
+                    },
+                    "dh_test_server_GCP_KAFKA": {
+                        "$secret": "dh_test_server_GCP_KAFKA"
+                    },
+                    "dh_test_server_GCP_MSSQL": {
+                        "$secret": "dh_test_server_GCP_MSSQL"
+                    },
+                    "dh_test_server_GCP_MYSQL": {
+                        "$secret": "dh_test_server_GCP_MYSQL"
+                    },
+                    "dh_test_server_GCP_ORACLE": {
+                        "$secret": "dh_test_server_GCP_ORACLE"
+                    },
+                    "dh_test_server_GCS": {
+                        "$vault": "dev-infra-ci-cd",
+                        "$vault_secret_path": "secret/internal-system/IM/GCP/sap-p-and-i-big-data-vora/im-gcs",
+                        "$vault_secret_key": "credential_milestone"
+                    },
+                    "dh_test_server_S3": {
+                        "$secret": "dh_test_server_S3"
+                    },
+                    "dh_test_server_WASB": {
+                        "$secret": "dh_test_server_WASB"
+                    }
+                },
+                "name": "e2e_scenario_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 4096
+                    }
+                },
+                "timeout": 7200,
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "SCRIPT_WORKSPACE": "fulcrum"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "e2e_smoke_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "voratools_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "import_export_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_flowagent_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_ta_connector_operator_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_authorization-scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_data_transform_scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_datahub_dq_integration_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "hanawire_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_api_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "streaming_tables_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "launchpad_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vora_tools_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "e2e_scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/build_and_run_images/Dockerfile",
+                "environment": {
+                    "COMPONENT": "APP_BASE",
+                    "COMPONENT_TEST_NAME": "datahub_app_base_test",
+                    "DOCKERFILE": "Dockerfile",
+                    "DOCKER_WORK_DIR": "datahub-app-base",
+                    "ENABLE_DEPLOYMENTS": "yes",
+                    "GIT_REPO": "git@github.wdf.sap.corp:bdh/datahub-app-base.git",
+                    "INTEGRATIONTEST_BW_PASSWORD": "Init1234",
+                    "INTEGRATIONTEST_BW_URL": "https://ldciw4g.mo.sap.corp:44323",
+                    "INTEGRATIONTEST_BW_USER": "BDH_TEST",
+                    "INTEGRATIONTEST_SDI_PASSWORD": "Support1234!",
+                    "INTEGRATIONTEST_SDI_URL": "http://bdh-df5.bigdata.sap.corp:8000",
+                    "INTEGRATIONTEST_SDI_USER": "Support",
+                    "JOB_NAME": "datahub_app_base_test_gke",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "TEST_FOLDER": "build/e2e-test"
+                },
+                "name": "datahub_app_base_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 4096
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "type": "docker"
+            },
+            {
+                "build_arguments": {
+                    "INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME": "docker.wdf.sap.corp",
+                    "INTERNAL_DOCKER_REGISTRY_PORT": "51055",
+                    "SCRIPT_WORKSPACE": "fulcrum"
+                },
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "e2e_smoke_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "voratools_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "import_export_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_flowagent_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_ta_connector_operator_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_authorization-scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_data_transform_scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_datahub_dq_integration_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "hanawire_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_api_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "streaming_tables_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "launchpad_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vora_tools_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "e2e_scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "datahub_app_base_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/hanalite_dqp_test/Dockerfile",
+                "environment": {
+                    "ENABLE_DEPLOYMENTS": "yes",
+                    "INTERNAL_DOCKER_REGISTRY_DOMAIN_NAME": "docker.wdf.sap.corp",
+                    "INTERNAL_DOCKER_REGISTRY_PORT": "51055",
+                    "JOB_NAME": "hanalite_dqp_test_gke",
+                    "PARENT_INSTALL_JOB": "install_gke"
+                },
+                "name": "hanalite_dqp_test_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 12228
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "timeout": 10800,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "e2e_smoke_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "voratools_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "import_export_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_flowagent_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_ta_connector_operator_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_authorization-scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_data_transform_scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_datahub_dq_integration_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "hanawire_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_api_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "streaming_tables_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "launchpad_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vora_tools_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "e2e_scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "datahub_app_base_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "hanalite_dqp_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/log_collection/Dockerfile",
+                "environment": {
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "PARENT_INSTALL_JOB": "install_gke"
+                },
+                "name": "log_collection_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 1,
+                        "memory": 1024
+                    }
+                },
+                "timeout": 10800,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "log_collection_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "e2e_smoke_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "voratools_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "import_export_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_flowagent_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_ta_connector_operator_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_authorization-scenario_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_data_transform_scenario_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_datahub_dq_integration_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "hanawire_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_api_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "streaming_tables_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "launchpad_ui_e2e_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_ui_e2e_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vora_tools_ui_e2e_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "e2e_scenario_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "datahub_app_base_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "hanalite_dqp_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "common/dockerfiles/ansible_runtime_gcloud",
+                "environment": {
+                    "ENABLE_AUTHENTICATION": "no",
+                    "FTPENABLE": "FALSE",
+                    "FTPHOST": "10.47.221.67",
+                    "FTPPASS": "Sapvora123",
+                    "FTPUSER": "infrabox_user",
+                    "GCP_APPLICATION_CREDENTIALS": "/google_credentials.txt",
+                    "GCP_PROJECT_ID": "sap-p-and-i-big-data-vora",
+                    "K8S_CREATION_JOB": "k8s_creation_gke",
+                    "OPERATION_TYPE": "UNINSTALL",
+                    "PROVISION_PLATFORM": "GKE",
+                    "USE_FOR": "MILESTONE_VALIDATION",
+                    "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+                    "VORA_NAMESPACE_PREFIX": "vora-nightly",
+                    "VORA_VERSION": "2.7.32-ms"
+                },
+                "name": "uninstall_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 2,
+                        "memory": 4096
+                    }
+                },
+                "security_context": {
+                    "privileged": true
+                },
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "uninstall_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "log_collection_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "e2e_smoke_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "voratools_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "import_export_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_flowagent_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_ta_connector_operator_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_authorization-scenario_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_data_transform_scenario_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vflow_datahub_dq_integration_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "hanawire_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_api_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "streaming_tables_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "launchpad_ui_e2e_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_ui_e2e_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "vora_tools_ui_e2e_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "e2e_scenario_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "datahub_app_base_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    },
+                    {
+                        "job": "hanalite_dqp_test_gke",
+                        "on": [
+                            "finished"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/k8s_deletion/Dockerfile",
+                "environment": {
+                    "K8S_CREATION_JOB": "k8s_creation_gke",
+                    "SERVER_URL": "https://im-api.datahub.only.sap"
+                },
+                "name": "k8s_deletion_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 1,
+                        "memory": 1024
+                    }
+                },
+                "timeout": 10800,
+                "type": "docker"
+            },
+            {
+                "build_only": false,
+                "depends_on": [
+                    {
+                        "job": "k8s_creation_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "k8s_deletion_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "install_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "uninstall_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "log_collection_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "e2e_smoke_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "voratools_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "import_export_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_flowagent_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_ta_connector_operator_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_authorization-scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_data_transform_scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vflow_datahub_dq_integration_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "hanawire_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_api_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "streaming_tables_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "launchpad_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vsystem_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "vora_tools_ui_e2e_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "e2e_scenario_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "datahub_app_base_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "job": "hanalite_dqp_test_gke",
+                        "on": [
+                            "*"
+                        ]
+                    }
+                ],
+                "docker_file": "hera/ci/hanalite-releasepack/infrabox/job_report/Dockerfile",
+                "environment": {
+                    "CONTINUES_INTEGRATION": "TRUE",
+                    "DASHBOARD_URL": "https://dashboard.datahub.only.sap",
+                    "DEFAULT_RECEIVERS": "edward.wang@sap.com",
+                    "FIXED_INFRABOX_URL": "infrabox.datahub.only.sap",
+                    "GERRIT_CHANGE_BRANCH": "master",
+                    "PARENT_INSTALL_JOB": "install_gke",
+                    "RESTAPI_HOST": "https://api.dashboard.datahub.only.sap",
+                    "RESTAPI_PATH": "/api/v1/trd/insert",
+                    "RESTAPI_PORT": "30711",
+                    "USE_FOR": "MILESTONE_VALIDATION",
+                    "VERBOSE": "1",
+                    "VORA_KUBE_PREFIX_URL": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+                    "VORA_VERSION": "2.7.32-ms"
+                },
+                "name": "job_report_gke",
+                "resources": {
+                    "limits": {
+                        "cpu": 1,
+                        "memory": 1024
+                    }
+                },
+                "timeout": 7200,
+                "type": "docker"
+            }
+        ],
+        "version": 1
+    },
+    "message": "Generate infrabox JSON file successfully",
+    "status": "200",
+    "task_name": "BDH-MILESTONE_VALIDATION-20190620_070822081",
+    "url": "Generate Infrabox json file only",
+    "version_info": {
+        "build_prod": false,
+        "prod_repository_name": "bdh_repository",
+        "prod_repository_url": "https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub/",
+        "prod_version": "2.7.32-ms"
+    }
+}

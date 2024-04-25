@@ -1,0 +1,47 @@
+- name: Copy rook deployment yml file
+  copy: src=rook-operator.yml  dest=/tmp/rook-operator.yml 
+
+- name: Copy rook deployment yml file
+  copy: src=rook-cluster.yml  dest=/tmp/rook-cluster.yml 
+
+- name: Copy rook deployment yml file
+  copy: src=rook-storageclass.yml  dest=/tmp/rook-storageclass.yml 
+
+- name: deploy rook-operator
+  shell: kubectl create -f /tmp/rook-operator.yml 
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: deploy rook-cluster
+  shell: kubectl create -f /tmp/rook-cluster.yml 
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: deploy rook-storageclass
+  shell: kubectl create -f /tmp/rook-storageclass.yml 
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: Wait until all pods are running (this will take a while)
+  shell: "OUT=$(kubectl get pods -n rook-system -o=custom-columns=:.status.phase) && ! (echo \"$OUT\" | grep -v '^$' | grep -vi \"Succeeded\" | grep -vi \"Running\")"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  args:
+    executable: /bin/bash
+  register: status
+  until: status.rc == 0
+  retries: 90 # Wait for 15 minutes max
+  delay: 30
+  ignore_errors: yes
+
+- name: Wait until all pods are running (this will take a while)
+  shell: "OUT=$(kubectl get pods -n rook -o=custom-columns=:.status.phase) && ! (echo \"$OUT\" | grep -v '^$' | grep -vi \"Succeeded\" | grep -vi \"Running\")"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  args:
+    executable: /bin/bash
+  register: status
+  until: status.rc == 0
+  retries: 90 # Wait for 15 minutes max
+  delay: 30
+  ignore_errors: yes

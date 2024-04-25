@@ -1,0 +1,20 @@
+---
+#check aws, docker, helm were installed or not
+- block:
+  - name: check aws
+    shell: "aws --version"
+    tags:
+      - install
+      - update
+
+  - name: check docker
+    shell: "docker version"
+    tags:
+      - install
+      - update
+
+  - name: check helm
+    shell: "helm version --client --short"
+    tags:
+      - install
+      - update

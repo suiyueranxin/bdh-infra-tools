@@ -1,0 +1,22 @@
+---
+- name: helm init
+  shell: "kubectl create serviceaccount --namespace kube-system tiller && \
+          kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller && \
+          kubectl patch deploy --namespace kube-system tiller-deploy -p '{\"spec\":{\"template\":{\"spec\":{\"serviceAccoun\":\"tiller\"}}}}' && \
+          helm init --service-account tiller --upgrade"
+  environment:
+    KUBECONFIG: "{{ azure_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+  - install
+
+- name: Create clusterrolebinding binding cluster-admin to SA default before installation
+  shell: kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
+  environment:
+    KUBECONFIG: "{{ azure_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+   - install
+
+
+

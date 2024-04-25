@@ -1,0 +1,2 @@
+docker build -t di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/reserve_cluster:0.1 -f reserve_cluster_base .
+docker push di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/reserve_cluster:0.1

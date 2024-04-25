@@ -1,0 +1,8 @@
+---
+- name: Wait until SSH is available from local with master's external IP
+  wait_for:
+    host: "{{ ssh_ip }}"
+    port: 22
+    delay: 60
+    timeout: 320
+    state: started

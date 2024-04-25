@@ -1,0 +1,50 @@
+<core:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+		controllerName="bdhreport.test_case_history" xmlns:html="http://www.w3.org/1999/xhtml" xmlns:layout="sap.ui.layout" xmlns:form="sap.ui.layout.form" xmlns:viz="sap.viz.ui5.controls" xmlns:viz.data="sap.viz.ui5.data" xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds" >
+	<Page id="test_case_history" title="Test Case History">
+		<customHeader>
+			<Bar>
+				<contentLeft>
+					<Button tooltip="Back" type="Back" press="goBackDBList" />
+				</contentLeft>
+				<contentMiddle>
+					<Title id="historyTitle" text="Test Case History For {/test_name}" titleStyle="H3" />
+				</contentMiddle>
+			</Bar>
+		</customHeader>
+		<content>
+					
+				<layout:FixFlex id='chartFixFlex' minFlexSize="250">
+					<layout:flexContent>
+					
+		            <viz:Popover id="idPopOver"></viz:Popover>
+		            <viz:VizFrame id="idVizFrame" uiConfig="{applicationSet:'fiori'}"
+		                height="100%" width="100%" vizType='column'>
+		                <viz:dataset>
+		                    <viz.data:FlattenedDataset data="{/dataList}">
+		                        <viz.data:dimensions>
+		                            <viz.data:DimensionDefinition name="Build"
+		                                value="{build_id}" />
+		                        </viz.data:dimensions>
+		                        <viz.data:measures>
+		                            <viz.data:MeasureDefinition name="Duration"
+		                                value="{test_duration}" />
+		                            
+		                        </viz.data:measures>
+		                    </viz.data:FlattenedDataset>
+		                </viz:dataset>
+		
+		                <viz:feeds>
+		                    <viz.feeds:FeedItem uid="valueAxis" type="Measure"
+		                        values="Duration" />
+		                    <viz.feeds:FeedItem uid="categoryAxis" type="Dimension"
+		                        values="Build" />
+		                </viz:feeds>
+		            </viz:VizFrame>
+		          
+			        </layout:flexContent>	
+				</layout:FixFlex>	
+				
+			
+		</content>
+	</Page>
+</core:View>

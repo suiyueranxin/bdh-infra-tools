@@ -1,0 +1,21 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-manager/ansible_runtime_on_ccloud_base_conn:ansible4.0.0
+
+ARG ANSIBLE_WORKSPACE=common
+ARG SCRIPT_WORKSPACE=fulcrum
+
+ENV http_proxy= \
+    https_proxy=
+
+# Now copy auto deployment code 
+COPY ${ANSIBLE_WORKSPACE}/ansible /ansible
+COPY ${SCRIPT_WORKSPACE}/script/bash/deployment.sh /deployment.sh
+COPY hera/ci/bdh-infra-tools/infrabox/service_check/junit_xml  /project/junit_xml
+COPY hera/ci/bdh-infra-tools/infrabox/service_check/six.py \
+     common/ansible/tools/bdh_health_check.py \
+     /project/
+
+RUN chmod +x /deployment.sh
+
+WORKDIR /ansible/
+
+ENTRYPOINT /deployment.sh

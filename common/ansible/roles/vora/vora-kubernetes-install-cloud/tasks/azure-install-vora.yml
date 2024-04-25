@@ -1,0 +1,243 @@
+---
+- name: Get SAPDataHub-Foundation folder name
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder
+
+- name: ceate public ip
+  azure:
+    resource_group_action: "create_public_ip"
+    resource_group_name: "{{ azure_resource_group }}"
+    domain_name_label: "{{ vora_kube_namespace }}{{ ansible_date_time.iso8601_basic_short[-6:] | lower }}"
+    public_ip_address_name: "{{ azure_resource_group }}-{{ vora_kube_namespace }}"
+    subscription_id: "{{ subscription_id }}"
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant: "{{ tenant }}"
+  register: result_public_ip
+
+- name: set public_ip variable
+  set_fact:
+    public_ip_address: "{{ result_public_ip.response.ip_address}}"
+    public_dns:  "{{ vora_kube_namespace }}.westeurope.cloudapp.azure.com"
+
+#- set_fact:
+#    public_ip_address: "51.144.124.14"
+#    public_dns: "{{ azure_resource_group }}-{{ vora_kube_namespace }}.westeurope.cloudapp.azure.com"
+
+- name: set some variable
+  set_fact:
+    installer_env:
+      KUBECONFIG: "{{ azure_kubeconfig }}"
+    installer_path: "{{distributed_runtime_folder.files[0].path}}"
+    cmd_vora_install: "./install.sh \
+                       --docker-registry={{ azure_registry_name }}.azurecr.io \
+                       --accept-license \
+                       --vora-system-password={{ vora_system_tenant_password }} \
+                       --vora-admin-username={{ vora_username }} \
+                       --vora-admin-password={{ vora_password }} \
+                       --vsolution-import-path={{installer_workspace}}/bdh-assembly-vsystem \
+                       --cert-domain={{ public_dns }} \
+                       --namespace={{ vora_kube_namespace }} \
+                       --enable-checkpoint-store=no \
+                       --interactive-security-configuration=no \
+                       --extra-arg=vora-cluster.components.txCoordinator.serviceType=AzureInternalLoadBalancer \
+                       --confirm-settings \
+                       2>&1 | tee {{ playbook_dir }}/vora_installation.log; exit ${PIPESTATUS[0]}"
+    no_log: true
+
+- debug:
+    var: cmd_vora_install
+  no_log: true
+
+- name: create cluster role binding
+  shell: "kubectl create clusterrolebinding default_is_admin --clusterrole=cluster-admin --serviceaccount={{ vora_kube_namespace }}:default"
+  environment:
+    "{{ installer_env }}"
+  ignore_errors: yes
+
+- name: install vora on azure
+  shell: "{{ cmd_vora_install }}"
+  environment:
+    "{{ installer_env }}"
+  args:
+    chdir: "{{ installer_path }}"
+  no_log: true
+
+- fetch:
+    src: "{{ playbook_dir }}/vora_installation.log"
+    dest: "{{ vora_installation_log }}"
+    flat: yes
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods logs directory
+    file: path="{{ installer_path }}/logs/podlogs" state=directory
+  - name: Collect current logs
+    shell: "{{ installer_path }}/tools/log_collector.py {{ installer_path }}/logs/podlogs --namespace {{ vora_kube_namespace }}"
+    environment:
+      "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- block:
+  - name: Create pods describe logs directory
+    file:
+      path: "{{ installer_path }}/logs/pod_des_logs"
+      state: directory
+  - name: save all pod describe log
+    shell: "python {{role_path}}/../vora-kubernetes-install/files/generate_pods_describe_log.py {{ vora_kube_namespace }} {{ installer_path }}/logs/pod_des_logs"
+    environment:
+        "{{ installer_env }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the logs folder
+  archive:
+    path: "{{ installer_path }}/logs"
+    dest: "{{ installer_workspace }}/{{ archive_logs }}"
+    format: zip
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_logs }}"
+    dest: "{{ archive_logs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the tools folder
+  archive:
+    path: "{{ installer_path }}/tools"
+    dest: "{{ installer_workspace }}/{{ archive_tools }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: archive the certs folder
+  archive:
+    path: "{{ installer_path }}/deployment/certs"
+    dest: "{{ installer_workspace }}/{{ certs }}"
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy logs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ archive_tools }}"
+    dest: "{{ archive_tools }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: copy certs to playbook folder
+  fetch:
+    src: "{{ installer_workspace }}/{{ certs }}"
+    dest: "{{ certs }}"
+    flat: yes
+  ignore_errors: true
+  tags:
+    - install
+    - update
+
+- name: generate the azure_vsystem_load_balancer.yaml to tmp dir
+  template:
+    src: azure_vsystem_load_balancer.yml.j2
+    dest: "{{ installer_workspace }}/vsystem_load_balancer.yml"
+
+- name: deploy the vsystem load balancer
+  shell: "kubectl create -n {{ vora_kube_namespace }} -f {{ installer_workspace }}/vsystem_load_balancer.yml"
+  environment:
+    "{{ installer_env }}"
+
+- name: wait vsystem service is ready
+  shell: "kubectl get service vsystem-load-balancer --namespace={{ vora_kube_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+  register: status
+  until: status.stdout == "{{ public_ip_address }}"
+  retries: 30 #Wait for 9 minutes max
+  delay: 15
+  ignore_errors: yes
+
+- name: debug public_ip_address
+  debug: var=public_ip_address
+
+# expose tx-coordinator
+- block:
+  - name: expose vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-tx-coordinator-ext --type LoadBalancer --name=tx-coordinator-service-ext --labels='datahub.sap.com/app=vora'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_txc_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service tx-coordinator-service-ext service.beta.kubernetes.io/azure-load-balancer-internal='true'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_txc_result.stdout}}"
+    tags:
+      - install
+  when: expose_vora_txc == "yes"
+
+# expose text-analysis
+- block:
+  - name: expose text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-textanalysis --type LoadBalancer --name=text-analysis-service-ext"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_text_analysis_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service text-analysis-service-ext  service.beta.kubernetes.io/azure-load-balancer-internal='true'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_text_analysis_result.stdout}}"
+    tags:
+      - install
+  when: expose_text_analysis == "yes"
+

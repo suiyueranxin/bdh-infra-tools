@@ -1,0 +1,124 @@
+
+
+
+# Kerberos related node configuration
+enable_kerberos: false
+krb_realm: "ANSIBLE"
+krb_environment_file: "{{ vora_conf_home }}/vora-krb-env.sh"
+jaas_configuration_path: "{{ vora_conf_home }}/jaas.conf"
+keytab_path: "/etc/security/keytabs"
+keytab_exports_path: "{{ keytab_path }}/exports"
+krb_log_path: "/var/log/krb5"
+admin_princ: "admin/admin"
+admin_passwd: "password"
+encryption_types: "des3-hmac-sha1"
+####################################
+# Vora tools principal & keytab
+####################################
+client_voratools: "vora"
+user_voratools: "hdfs"
+group_voratools: "hdfs"
+keytab_voratools: "{{ keytab_path }}/vora-tools.keytab"
+####################################
+# v2server principal & keytab
+####################################
+service_v2server: "vora"
+user_v2server: "hdfs"
+group_v2server: "hdfs"
+keytab_v2server: "{{ keytab_path }}/v2server.service.keytab"
+##################################################
+# Hive principal & keytab used by thrift server
+##################################################
+service_hive: "vora"
+user_hive: "hdfs"
+group_hive: "hdfs"
+template_princ_hive: "{{ service_hive }}/_HOST@{{ krb_realm }}"
+keytab_hive: "{{ keytab_path }}/hive.service.keytab"
+####################################
+# Spark principal & keytab
+####################################
+client_spark: "vora"
+user_spark: "hdfs"
+group_spark: "hdfs"
+keytab_spark: "{{ keytab_path }}/vora.keytab"
+####################################
+# Hanaes principal & keytab
+####################################
+client_hanaes: "hanaes"
+user_hanaes: "hanaes"
+group_hanaes: "sapsys"
+keytab_hanaes: "{{ keytab_path }}/hanaes.keytab"
+####################################
+# hanaes service principal & keytab
+# v2auth mandates the same service principal for all endpoints
+# hence a copy of keytab_v2server but owner/group are hanaes/sapsys
+####################################
+service_hanaes: "vora"
+keytab_service_hanaes: "{{ keytab_path }}/hanaes.service.keytab"
+###########################################################
+# Client principals & keytabs distributed to all nodes
+###########################################################
+krb_client_principals:
+  - { princ: "{{ client_spark }}@{{ krb_realm }}", os_user: "{{ user_spark }}", os_group: "{{ group_spark }}", keytab_path: "{{ keytab_spark }}", local_path: "/tmp" }
+  - { princ: "{{ client_voratools }}@{{ krb_realm }}", os_user: "{{ user_voratools }}", os_group: "{{ group_voratools }}", keytab_path: "{{ keytab_voratools }}", local_path: "/tmp" }
+###########################################################
+# Service principals & keytabs specific to each node
+###########################################################
+krb_service_principals:
+  - { princ: "{{ service_v2server }}", os_user: "{{ user_v2server }}", os_group: "{{ group_v2server }}", keytab_path: "{{ keytab_v2server }}", local_path: "/tmp" }
+  - { princ: "{{ service_hive }}", os_user: "{{ user_hive }}", os_group: "{{ group_hive }}", keytab_path: "{{ keytab_hive }}", local_path: "/tmp" }
+####################################
+# Cloudera admin principal
+####################################
+cloudera_krb_admin_princ: cloudera-scm/admin@{{ krb_realm }}
+cloudera_krb_admin_passwd: admin
+# we do not manage the path of this keytab file
+keytab_hdfs_ambari: "/etc/security/keytabs/hdfs.headless.keytab"
+user_hdfs: "hdfs"
+group_hdfs: "hdfs"
+####################################
+# MapR CLDB principal
+####################################
+user_mapr: mapr
+group_mapr: mapr
+shortname_mapr: mapr
+keytab_mapr: /opt/mapr/conf/mapr.keytab
+cldb_princ:
+  - princ: "{{ shortname_mapr }}/{{ cluster_name }}@{{ krb_realm }}"
+    os_user: "{{ user_mapr }}"
+    os_group: "{{ group_mapr }}"
+    keytab_path: "{{ keytab_mapr }}"
+    prepare_keytab: true
+    acquire_tgt: true
+    local_path: "/tmp"
+mapr_acl_full: "fc"
+mapr_tmp_ticket: "/tmp/vora.service.ticket"
+mapr_vora_srv_ticket: "/etc/vora/vora.service.ticket"
+mapr_vora_srv_ticket_valid: "30:0:0"
+mapr_vora_srv_ticket_renewal: "90:0:0"
+# PKI related node configuration
+enable_pki: true
+key_store_path: "/etc/security/keys"
+certs_path: "/etc/security/certs"
+ca_install_path: "/etc/security/vora-ca"
+ca_key_path: "{{ key_store_path }}/vora-ca.pem"
+ca_cert: "{{ certs_path }}/vora-ca.cert"
+ca_crldir_path: "{{ ca_install_path }}/crl"
+ca_newcerts_path: "{{ ca_install_path }}/newcerts"
+ca_database_path: "{{ ca_install_path }}/index.txt"
+ca_serial_path: "{{ ca_install_path }}/serial"
+ca_crlnumber_path: "{{ ca_install_path }}/crlnumber"
+ca_crl_path: "{{ ca_crldir_path }}/vora-ca.crl"
+ca_randfile_path: "{{ key_store_path }}/.rand"
+wildcard_CN: "*.{{ ansible_domain }}"
+ca_certs:
+  - { key_path: "{{ ca_key_path }}", key_size: 4096, expiry_date: 7300, extension: "v3_ca", cert_path: "{{ ca_cert }}", country_name: "TR", state: "Istanbul", locality_name: "Pendik", org_name: "SAP", org_unitname: "Vora Security", common_name: "Vora CA",  local_path: "/tmp", os_user: "{{ ansible_user }}", os_group: "{{ ansible_user }}"}
+# Client certificates to be generated, signed and distributed
+client_certs:
+  - { key_path: "{{ key_store_path }}/vora-tools.pem", key_size: 2048, expiry_date: 375, extension: "server_cert", cert_path: "{{ certs_path }}/vora-tools.cert", country_name: "TR", state: "Istanbul", locality_name: "Pendik", org_name: "SAP", org_unitname: "Vora", common_name: "{{ wildcard_CN }}", csr_path: "{{ ca_install_path }}/csr/vora-tools.csr",  local_path: "/tmp", os_user: "{{ user_spark }}", os_group: "{{ group_spark }}" }
+
+truststore_certs:
+  - { keystore: "{{ certs_path }}/vora.jks", cert_path: "{{ certs_path }}/vora-tools.cert", storepass: "password", storetype: "JKS"}
+  - { keystore: "{{ certs_path }}/vora.jks", cert_path: "{{ certs_path }}/vora-ca.cert", storepass: "password", storetype: "JKS"}
+keystore_certs:
+  - { key_path: "{{ key_store_path }}/vora-tools.pem", ca_cert: "{{ ca_cert }}", cert_path: "{{ certs_path }}/vora-tools.cert", output_file: "{{ key_store_path }}/vora.p12", password: "" }

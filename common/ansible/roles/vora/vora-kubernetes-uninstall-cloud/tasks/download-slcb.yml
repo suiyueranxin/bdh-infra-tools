@@ -1,0 +1,27 @@
+- name: download slcb
+  get_url:
+    url: "{{ slcb_download_url }}"
+    dest: "{{ installer_workspace }}/slcb"
+    mode: '0744'
+    timeout: 300
+    validate_certs: no
+  tags:
+  - uninstall
+
+- name: download unzip
+  shell: "apt-get update -y; apt-get install -y unzip"
+  environment:
+    "{{ installer_env }}"
+  when: slcb_package_suffix == "zip"
+  tags:
+    - uninstall
+
+- name: unzip slcb
+  unarchive:
+    src: "{{ installer_workspace }}/slcb"
+    dest: "{{ installer_workspace }}"
+  environment:
+    "{{ installer_env }}"
+  when: slcb_package_suffix == "zip"
+  tags:
+    - uninstall

@@ -1,0 +1,51 @@
+---
+- name: Get SAPDataHub-Foundation folder name
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder_uninstall
+  tags:
+    - uninstall
+
+- name: Download vara install package if runtime folder doesn't exist
+  include_role: 
+    name: vora-kubernetes-install
+    tasks_from: prepare-vora-package
+  when: not distributed_runtime_folder_uninstall.files
+  tags:
+    - uninstall
+
+- name: Re-get SAPDataHub-Foundation folder name in case of skipped
+  find:
+    paths: "{{installer_workspace}}"
+    patterns: "SAPDataHub*{{vora_kube_suffix}}"
+    file_type: directory
+  register: distributed_runtime_folder
+  tags:
+    - uninstall
+
+- name: Set installer path
+  set_fact:
+    installer_path: "{{distributed_runtime_folder.files[0].path}}"
+  tags:
+    - uninstall
+
+- name: Uninstall Vora
+  shell: "./install.sh {{ installer_base_cmd }} 2>&1 | tee {{installer_workspace}}/uninstall_process.log; exit ${PIPESTATUS[0]}"
+  args:
+    chdir: "{{ installer_path }}"
+    executable: /bin/bash
+  environment:
+    "{{ installer_env }}"
+  ignore_errors: true
+  register: uninstall_result
+  tags:
+    - uninstall
+
+- fetch:
+    src: "{{installer_workspace}}/uninstall_process.log"
+    dest: "{{ vora_uninstall_log }}"
+    flat: yes
+  tags:
+    - uninstall

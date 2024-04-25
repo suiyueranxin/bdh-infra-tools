@@ -1,0 +1,5 @@
+---
+- name: remove file or directory
+  file:
+    path: "{{ file_to_drop }}"
+    state: absent

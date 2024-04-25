@@ -1,0 +1,100 @@
+---
+- name: enable the IPv6
+  shell: echo "net.ipv6.conf.all.disable_ipv6 = 0" >> /etc/sysctl.conf && sysctl -p /etc/sysctl.conf
+  become_user: root
+  become: yes
+  tags:
+    - install
+
+- include_role:
+    name: file-decrypt
+  vars:
+    encrypted_file_path: "{{ playbook_dir }}/../cloud/gardener/admin_api.conf.encrypt"
+    decryption_file_path: "{{ playbook_dir }}/../cloud/gardener/admin_api.conf"
+  tags:
+    - update
+
+- name: get the token of current shoot
+  shell: "kubectl --kubeconfig={{ playbook_dir }}/../cloud/gardener/admin_api.conf get secrets {{gardener_shoot_name}}.kubeconfig --namespace garden-{{gardener_project_name}} -o jsonpath={.data.kubeconfig} | base64 --decode > {{ playbook_dir }}/../cloud/gardener/KUBECONFIG"
+  environment:
+    https_proxy: "{{ proxy_https_gardener }}"
+  tags:
+    - update
+
+#helm init & helm mapconfig check/workaround
+- block:
+  - name: create service account
+    shell: "kubectl create serviceaccount --namespace kube-system tiller"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: create role binding
+    shell: "kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller --namespace kube-system"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: helm init first to create service
+    shell: "helm init"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    tags:
+      - install
+
+  - name: patch deploy
+    shell: "kubectl patch deploy --namespace kube-system tiller-deploy -p '{\"spec\":{\"template\":{\"spec\":{\"serviceAccount\":\"tiller\"}}}}'"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: wait for the tiller-deploy
+    shell: "kubectl get pod --namespace kube-system | grep tiller-deploy | awk '{print $3}'"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    register: result_tiller_deploy
+    until: result_tiller_deploy.stdout == "Running"
+    retries: 10 # Wait for 10 minutes max
+    delay: 60
+    tags:
+      - install
+
+  - name: helm init
+    shell: "helm init --service-account tiller --upgrade"
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    tags:
+      - install
+
+  - name: helm version check
+    shell: helm version
+    environment:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    tags:
+      - install
+      - update
+
+- block:
+  - name: check bucket is already exist or not
+    shell: "aws s3api list-buckets"
+    register: result_bucket_list
+
+  - block:
+    - name: create s3 bucket if not exist
+      shell: "{{role_path}}/files/gardener-aws-create-s3-bucket.sh {{gardener_aws_s3_bucket_name}} {{gardener_aws_region}}"
+      register: create_s3_bucket_result
+    - debug:
+        msg: "create s3 bucket detail: {{ create_s3_bucket_result.stdout }}"
+    when: result_bucket_list.stdout.find(gardener_aws_s3_bucket_name) < 0
+
+  - name: create s3 bucket folder for checkpoint
+    shell: "aws s3api put-object --bucket {{gardener_aws_s3_bucket_name}} --key {{gardener_aws_k8s_cluster_name}}/"
+  tags:
+    - install
+

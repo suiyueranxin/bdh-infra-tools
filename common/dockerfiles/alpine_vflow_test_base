@@ -1,0 +1,5 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/alpine_python_base:latest
+
+RUN apk add --no-cache --update git python3 python3-dev py3-virtualenv build-base linux-headers > /dev/null
+RUN rm -rf /root/.cache/pip/*
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.9.6/bin/linux/amd64/kubectl && chmod +x kubectl && cp kubectl /bin/kubectl

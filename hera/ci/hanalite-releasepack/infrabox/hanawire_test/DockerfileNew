@@ -1,0 +1,2 @@
+ARG INFRABOX_BUILD_NUMBER
+FROM registry-backup.datahub.only.sap/bdh-infra-tools/hanawire_test:${INFRABOX_BUILD_NUMBER}

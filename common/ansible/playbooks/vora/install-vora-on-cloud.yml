@@ -1,0 +1,4 @@
+---
+- hosts: workstation
+  roles:
+    - { role: vora-kubernetes-install-cloud,become_user: root,become: yes,become_method: sudo }

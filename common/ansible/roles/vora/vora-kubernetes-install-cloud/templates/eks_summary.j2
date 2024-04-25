@@ -1,0 +1,22 @@
+platform: {{cloud_platform}}
+eks aws region: {{eks_aws_region}}
+eks storage bucket name: {{eks_k8s_cluster_name }}
+{% if k8s_version is defined %}
+kubernetes version: {{k8s_version}}
+{% endif %}
+datahub version: {{vorapkg_version}}
+datahub namespace: {{vora_kube_namespace}}
+{% if expose_vsystem == "yes" %}
+datahub launch-pad endpoint: https://{{ eks_k8s_cluster_name | replace('_', '-') }}-eks.infra.{{ eks_dns_zone }}
+{% endif %}
+{% if di_backup_path_prefix is defined %}
+di backup path prefix: {{di_backup_path_prefix}}
+{% endif %}
+datahub user tenant name: default
+datahub system tenant name: system
+datahub user/system tenant user: {{vora_username}}
+datahub user tenant password: {{vora_password}}
+datahub system tenant password: {{vora_system_tenant_password}}
+{% if vora_kubernetes_local_pkg is not defined %}
+datahub package url: {{vora_kube_download_url}}
+{% endif %}

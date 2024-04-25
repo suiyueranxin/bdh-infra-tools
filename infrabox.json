@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "jobs": [
+  {
+      "type": "docker",
+      "name": "static_check",
+      "docker_file": "pylint_check/Dockerfile",
+      "build_only": false,
+      "resources": { "limits": { "cpu": 2, "memory": 2048 } }
+  },
+  {
+    "name": "checkmarx-scan",
+    "type": "docker-image",
+    "image": "docker.wdf.sap.corp:51021/com.sap.velocity-infra/infrabox-checkmarx-integration:0.0.17",
+    "environment": {
+      "PROJECT_NAME": "CxServer\\SP\\SAP\\PI\\BigData\\datahub.bdh-infra-tools",
+      "CX_SERVER": "https://cx.wdf.sap.corp",
+      "CHECKMARX_USERNAME": "GLOBAL\\di_sast_scans",
+      "CHECKMARX_PASSWORD": { "$secret": "MY_CHECKMARX_PASSWORD" },
+      "FULL_SCAN_BRANCHES": "*"
+    },
+    "resources": { "limits": { "cpu": 2, "memory": 2048 } }
+  },
+  {
+    "name": "bandit-scan",
+    "type": "docker-image",
+    "image": "docker.wdf.sap.corp:51021/com.sap.velocity-infra/infrabox-bandit-integration:0.0.9",
+    "resources": {
+      "limits": {
+        "cpu": 1,
+        "memory": 1024
+      }
+    }
+  }
+]
+}
+  

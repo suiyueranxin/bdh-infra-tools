@@ -1,0 +1,27 @@
+---
+- name: ref the aws common vars
+  include_vars:
+    file: "{{ role_path }}/../aws-vars.yml"
+
+- assert: { that: cluster_provider == "aws" }
+
+- name: disassociate elastic ip
+  ec2_eip:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    region: "{{ aws_region }}"
+    device_id: "{{ item }}"
+    state: "absent"
+  with_items: "{{ aws_instance_ids }}"
+
+- name: Terminate instances of cluster @ AWS
+  ec2:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    zone: "{{ aws_cluster_zone }}"
+    validate_certs: no
+    state: "absent"
+    instance_ids: "{{ item }}"
+  with_items: "{{ aws_instance_ids }}"

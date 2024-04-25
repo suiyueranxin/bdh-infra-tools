@@ -1,0 +1,27 @@
+[workstation]
+localhost ansible_connection=local
+
+[nodes:children]
+masters
+workers
+
+[workers:children]
+just_workers
+jumpbox
+
+[masters]
+mo-20026b3a9.mo.sap.corp
+
+[just_workers]
+mo-ae6ea0d07.mo.sap.corp
+mo-b6af3e469.mo.sap.corp
+
+[jumpbox]
+mo-9b32f3aa3.mo.sap.corp
+
+[all:vars]
+cluster_provider=monsoon
+# general Monsoon options
+# attached disk will be extended to this logical volume
+vol_to_extend=var
+

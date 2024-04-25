@@ -1,0 +1,37 @@
+---
+- name: deploy hadoop
+  shell: "sleep 120 && helm install --name hadoop \
+            --set persistence.nameNode.enabled=true \
+            --set persistence.dataNode.enabled=true \
+            --set persistence.dataNode.size=20Gi \
+            --set persistence.nameNode.size=20Gi \
+            --set persistence.nameNode.storageClass=rook-block \
+            --set persistence.dataNode.storageClass=rook-block \
+            --namespace hadoop \
+            stable/hadoop"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  tags:
+    - install
+    - update
+
+- name: Wait until all pods are running (this will take a while)
+  shell: "OUT=$(kubectl get pods -n hadoop -o=custom-columns=:.status.phase) && ! (echo \"$OUT\" | grep -v '^$' | grep -vi \"Succeeded\" | grep -vi \"Running\")"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  args:
+    executable: /bin/bash
+  register: status
+  until: status.rc == 0
+  retries: 90 # Wait for 15 minutes max
+  delay: 30
+  ignore_errors: yes
+  tags:
+    - install
+    - update
+
+- set_fact:
+    hdfs_url: "Proxy=noproxy&Username=root&webhdfs://{{hadoop_host}}"
+  tags:
+    - install
+    - update

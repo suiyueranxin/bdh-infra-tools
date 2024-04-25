@@ -1,0 +1,35 @@
+---
+- name: ref the aws common vars
+  include_vars:
+    file: "{{ role_path }}/../aws-vars.yml"
+
+- name: associate elastic ip to instance
+  ec2_eip:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    region: "{{ aws_region }}"
+    device_id: "{{ jumpbox_id }}"
+
+- name: get the facts of instance
+  ec2_instance_facts:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    ec2_url: "{{ ec2_endpoint_url }}"
+    region: "{{ aws_region }}"
+    filters:
+      instance-id: "{{ jumpbox_id }}"
+  register: result_jumpbox_facts
+
+- name: set the facts including public ip
+  set_fact:
+    jumpbox_instance_facts: "{{ result_jumpbox_facts.instances }}"
+
+- name: save the elastic ip into inventory file
+  blockinfile:
+    dest: "{{ inventory_dir }}/{{ inventory_file | basename }}"
+    follow: yes
+    block: |
+      [jumpbox:vars]
+      external_ip={{ jumpbox_instance_facts[0].public_ip_address }}
+      external_recordset={{ jumpbox_instance_facts[0].public_dns_name }}

@@ -1,0 +1,33 @@
+{% if install_flag == "--update" %}
+SLP_ACTIVITY: "UPGRADE"
+{% elif install_flag == "" %}
+SLP_ACTIVITY: "INSTALL"
+{% endif %}
+KUBECONFIG: "{{ eks_k8s_cluster_kubeconfig }}"
+SLP_NAMESPACE: "{{ vora_kube_namespace }}"
+SLP_DOCKER_REGISTRY: "{{ eks_docker_install_registry }}"
+{% if eks_vflow_install_registry != "" %}
+SLP_CONFIGURE_REGISTRY_FOR_VFLOW: 'true'
+SLP_VFLOW_REGISTRY: "{{ eks_vflow_install_registry }}"
+{% endif %}
+SAP_DOCKER_REPO: "{{ docker_artifactory }}"
+DOCKER_USER: "{{ artifactory_login_username }}"
+DOCKER_USER_PASS: "{{ artifactory_login_password }}"
+VORA_SYSTEM_ADMIN_PASSWORD: "{{ vora_system_tenant_password }}"
+SLP_VORA_ADMIN_USERNAME: "{{ vora_username }}"
+VORA_ADMIN_PASSWORD: "{{ vora_password }}"
+SLP_EXTRA_PARAMETERS: "{{ slp_extra_parameters }}"
+{% if enable_storage_checkpoint == "yes" %}
+SLP_ENABLE_CHECKPOINT_STORE: "yes"
+SLP_CHECKPOINT_STORE_TYPE_RAW: "s3"
+SLP_CHECKPOINT_S3_ACCESS_KEY: "{{ aws_access_key }}"
+SLP_CHECKPOINT_S3_SECRET_ACCESS_KEY: "{{ aws_secret_key }}"
+SLP_CHECKPOINT_S3_REGION: "{{ eks_aws_region }}"
+SLP_CHECKPOINT_S3_PATH: "{{ eks_aws_s3_bucket_name }}/{{ eks_k8s_cluster_name }}"
+SLP_VALIDATE_CHECKPOINT_STORE: "yes"
+{% else %}
+SLP_ENABLE_CHECKPOINT_STORE: "no"
+{% endif %}
+SLP_CERT_DOMAIN: "{{ cert_domain }}"
+LICENSE_AGREEMENT: true
+NON_INTERACTIVE_MODE: "yes"

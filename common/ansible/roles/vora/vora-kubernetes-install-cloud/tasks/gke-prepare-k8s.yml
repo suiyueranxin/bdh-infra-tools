@@ -1,0 +1,48 @@
+- name: Create serviceaccount for tiller before installation
+  shell: kubectl create serviceaccount --namespace kube-system tiller
+  environment:
+    KUBECONFIG: "{{ gke_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+   - install
+
+- name: Create clusterrolebinding binding cluster-admin to SA tiller before installation
+  shell: kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+  environment:
+    KUBECONFIG: "{{ gke_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+   - install
+
+- name: Create clusterrolebinding binding cluster-admin to SA default before installation
+  shell: kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
+  environment:
+    KUBECONFIG: "{{ gke_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+   - install
+
+- name: Create clusterrolebinding binding cluster-admin to SA default at namespace before installation
+  shell: kubectl create clusterrolebinding add-on-cluster-admin-"{{ vora_kube_namespace }}"-default --clusterrole=cluster-admin --serviceaccount="{{ vora_kube_namespace }}":default
+  environment:
+    KUBECONFIG: "{{ gke_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+   - install
+
+
+- name: Create clusterrolebinding binding cluster-admin to SA vora-k8s-dqp at namespace before installation
+  shell: kubectl create clusterrolebinding add-on-cluster-admin-"{{ vora_kube_namespace }}"-vora-k8s-dqp --clusterrole=cluster-admin --serviceaccount="{{ vora_kube_namespace }}":vora-k8s-dqp
+  environment:
+    KUBECONFIG: "{{ gke_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+   - install
+
+- name: Create clusterrolebinding binding cluster-admin to SA kubernetes-dashboard before installation
+  shell: kubectl create clusterrolebinding kubernetes-dashboard --clusterrole=cluster-admin --serviceaccount=kube-system:kubernetes-dashboard
+  environment:
+    KUBECONFIG: "{{ gke_k8s_cluster_kubeconfig }}"
+  ignore_errors: yes
+  tags:
+   - install

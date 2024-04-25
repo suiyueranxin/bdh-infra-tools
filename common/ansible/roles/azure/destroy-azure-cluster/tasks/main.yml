@@ -1,0 +1,16 @@
+---
+- name: ref microsoftware azure common vars
+  include_vars:
+    file: "{{ role_path }}/../azure-vars.yml"
+
+- name: Destroy k8s cluster on Azure
+  azure:
+    resource_group_action: delete
+    resource_group_name: "{{ azure_resource_group }}"
+    registry_name: "{{ azure_registry_name }}"
+    container_service_name: "{{ azure_container_service_name }}"
+    subscription_id: "{{ subscription_id }}"
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant: "{{ tenant }}"
+

@@ -1,0 +1,191 @@
+<core:View xmlns:core="sap.ui.core" xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m"
+		controllerName="bdhreport.push_validation_report" xmlns:html="http://www.w3.org/1999/xhtml" xmlns:layout="sap.ui.layout" xmlns:form="sap.ui.layout.form" xmlns:viz="sap.viz.ui5.controls" xmlns:viz.data="sap.viz.ui5.data" xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds" >
+	<Page id="push_validation_report" title="Push Validation Report">
+		
+		<content>
+			<VBox>
+			<Panel id="chartPanel" expandable="true" expanded="false" headerText="Statistic Graphic" width="auto" expand="onShowGraphic">
+				<form:SimpleForm id="3SimpleFormDisplay" 
+                    maxContainerCols="1"
+                    layout="ResponsiveGridLayout" 
+                    labelSpanL="2"
+                    labelSpanM="2"
+                    emptySpanL="0"
+                    emptySpanM="0"
+                    columnsL="1"
+                    columnsM="1">
+				<layout:FixFlex id='chartFixFlex' minFlexSize="250">
+				<layout:flexContent>
+				
+	            <viz:Popover id="idPopOver"></viz:Popover>
+	            <viz:VizFrame id="idVizFrame" uiConfig="{applicationSet:'fiori'}"
+	                height="100%" width="auto" vizType='pie'>
+	                <viz:dataset>
+	                    <viz.data:FlattenedDataset data="{/dataList}">
+	                        <viz.data:dimensions>
+	                            <viz.data:DimensionDefinition name="Status"
+	                                value="{build_state}" />
+	                        </viz.data:dimensions>
+	                        <viz.data:measures>
+	                            <viz.data:MeasureDefinition name="Rate"
+	                                value="{build_rate}" />
+	                        </viz.data:measures>
+	                    </viz.data:FlattenedDataset>
+	                </viz:dataset>
+	
+	                <viz:feeds>
+	                    <viz.feeds:FeedItem uid="size" type="Measure"
+	                        values="Rate" />
+	                    <viz.feeds:FeedItem uid="color" type="Dimension"
+	                        values="Status" />
+	                </viz:feeds>
+	            </viz:VizFrame>
+	          
+		        </layout:flexContent>	
+				</layout:FixFlex>	
+	
+				<layout:FixFlex id='chartFixFlexFailReason' minFlexSize="250">
+				<layout:flexContent>
+				
+	            <viz:Popover id="idPopOverFailReason"></viz:Popover>
+	            <viz:VizFrame id="idVizFrameFailReason" uiConfig="{applicationSet:'fiori'}"
+	                height="100%" width="auto" vizType='bar'>
+	                <viz:dataset>
+	                    <viz.data:FlattenedDataset data="{/dataList}">
+	                        <viz.data:dimensions>
+	                            <viz.data:DimensionDefinition name="Failure Reason"
+	                                value="{failure_reason}" />
+	                        </viz.data:dimensions>
+	                        <viz.data:measures>
+	                            <viz.data:MeasureDefinition name="Count"
+	                                value="{failure_summary}" />
+	                        </viz.data:measures>
+	                    </viz.data:FlattenedDataset>
+	                </viz:dataset>
+	
+	                <viz:feeds>
+	                    <viz.feeds:FeedItem uid="valueAxis" type="Measure"
+	                        values="Count" />
+	                    <viz.feeds:FeedItem uid="categoryAxis" type="Dimension"
+	                        values="Failure Reason" />
+	                </viz:feeds>
+	            </viz:VizFrame>
+	           
+		        </layout:flexContent>	
+				</layout:FixFlex>	
+				</form:SimpleForm>
+			</Panel>				
+			<Table 
+				id="reportTableForPushV"
+				width="auto"
+				items="{path:'/dataList'}"
+				updateFinished="onUpdateFinished">
+				<headerToolbar>
+					<Toolbar>
+						<Title id="tableTitlePush" text="Results({/totalCount})"/>
+						<ToolbarSpacer />
+<!-- 						<Label text="Branch" design="Bold"/>						 -->
+<!-- 						<Select id="branchList" items="{/list}" selectedKey="MultiSelect" change="onBranchSelectChange">							 -->
+<!-- 							<items> -->
+<!-- 								<core:Item key="{branch}" text="{branch}"></core:Item> -->
+<!-- 							</items>							 -->
+<!-- 						</Select>																				 -->
+<!-- 						<Label text="Version" design="Bold"/>						 -->
+<!-- 						<Select id="versionList" items="{/list}" selectedKey="MultiSelect" change="onVersionSelectChange">						 -->
+<!-- 							<items> -->
+<!-- 								<core:Item key="{version}" text="{version}"></core:Item> -->
+<!-- 							</items> -->
+<!-- 						</Select>		 -->
+						<Button icon="sap-icon://download" press="onPressExport" />
+					</Toolbar>
+				</headerToolbar>
+				<columns>					
+					<Column>
+						<Text text="SAP Data Hub Version"/>
+					</Column>	
+					<Column>
+						<Text text="Status"/>
+					</Column>	
+					<Column>
+						<Text text="Current Commit id"/>
+					</Column>
+					<Column>
+						<Text text="Auther"/>
+					</Column>	
+					<Column>
+						<Text text="Branch"/>
+					</Column>								
+<!-- 					<Column> -->
+<!-- 						<Text text="Failure Reason"/> -->
+<!-- 					</Column> -->
+					<Column>
+						<Text text="Recent Commits"/>
+					</Column>
+					<Column>
+						<Text text="Build id"/>
+					</Column>
+					<Column sortProperty="start_time" sorted="true">
+						<Text text="Start Time"/>
+					</Column>
+					<Column>
+						<Text text="Duration(/h)"/>
+					</Column>		
+				</columns>
+				<items>
+					<ColumnListItem
+						press="onPress">
+						<cells>
+							<ObjectNumber
+								number="{vora_version}"
+								state="{
+									path: 'build_state',
+									formatter: '.showStatus'
+							}"/>	
+							
+							<ObjectStatus
+								active="true"
+								tooltip="Go to test case list"
+								press="toCaseDetail"
+								text="{build_state}"
+								state="{
+									path: 'build_state',
+									formatter: '.showStatus'
+							}"/>	
+														
+							<Link text="{commit_id}" target="_blank" href="{code_change_url}" tooltip="{commit_id}"/>
+							<ObjectNumber
+								number="{commit_author}"
+								state="{
+									path: 'build_state',
+									formatter: '.showStatus'
+							}"/>
+							<ObjectNumber
+								number="{branch}"
+								state="{
+									path: 'build_state',
+									formatter: '.showStatus'
+							}"/>																  							
+<!-- 							<Text text="{failure_root_cause}"/>							 -->						
+							<Button icon="sap-icon://work-history" tooltip="Recent Commits" press="onPressHistory"></Button>
+							<Link text="{build_id}" target="_blank" href = "{detail_url}"/>
+							<ObjectNumber 
+								number="{start_time}"
+								state="{
+									path: 'build_state',
+									formatter: '.showStatus'
+							}"/>
+							<ObjectNumber 
+								number="{duration}"
+								state="{
+									path: 'build_state',
+									formatter: '.showStatus'
+							}"/>
+							
+						</cells>
+					</ColumnListItem>
+				</items>
+			</Table>	
+			</VBox>		
+		</content>
+	</Page>
+</core:View>

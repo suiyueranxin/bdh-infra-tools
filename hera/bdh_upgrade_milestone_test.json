@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "type": "docker",
+            "name": "generator",
+            "docker_file": "hera/ci/hanalite-releasepack/infrabox/multiple_step_upgrade/Dockerfile",
+            "build_only": false,
+            "resources": { "limits": { "cpu": 2, "memory": 2048 } },
+            "build_context": "../"
+        }
+    ]
+}

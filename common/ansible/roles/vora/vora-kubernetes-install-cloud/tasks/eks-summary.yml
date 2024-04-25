@@ -1,0 +1,8 @@
+---
+- name: generate summary file
+  template:
+    src: eks_summary.j2
+    dest: "{{ playbook_dir }}/summary.log"
+  tags:
+    - install
+    - update

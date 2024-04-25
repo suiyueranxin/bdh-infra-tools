@@ -1,0 +1,20 @@
+---
+- include_role:
+    name: vora-kubernetes-install-cloud
+    tasks_from: gardener-aws-docker-login.yml
+  tags:
+    - uninstall
+
+- name: Set Vora uninstall command
+  set_fact:
+    installer_env:
+      KUBECONFIG: "{{ gardener_shoot_kubeconfig }}"
+    installer_base_cmd: "--purge \
+                         --force-deletion \
+                         --namespace={{ vora_kube_namespace }} \
+                         --docker-registry={{ gardener_docker_registry }} \
+                         --deployment-type=cloud \
+                         --disable-installer-logging"
+  tags:
+    - uninstall
+

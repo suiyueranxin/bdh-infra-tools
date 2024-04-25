@@ -1,0 +1,15 @@
+{
+    "version": 1,
+    "jobs": [
+        {
+            "clone_url": "https://github.wdf.sap.corp/bdh/bdh-infra-tools.git",
+            "infrabox_file": "hera/infrabox_hanalite-releasepack_nightly_generator.json",
+            "type": "git",
+            "name": "bdh-infra-tools",
+            "commit": "stable",
+            "environment": {
+                "GERRIT_CHANGE_BRANCH": "stable"
+            }
+        }
+    ]
+}

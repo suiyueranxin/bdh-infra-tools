@@ -1,0 +1,9 @@
+---
+- name: Bypass proxy for yum repos for RHEL 7.x on ccloud
+  lineinfile: dest=/etc/yum.repos.d/{{ item }} line="proxy=_none_" state=present
+  with_items:
+  - rhel_7_epel.repo
+  - rhel_7_server_extras_rpms.repo
+  - rhel_7_server_optional_rpms.repo
+  - rhel_7_server_rpms.repo
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"

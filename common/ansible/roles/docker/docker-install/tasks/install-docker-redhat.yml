@@ -1,0 +1,33 @@
+---
+- assert: { that: "ansible_distribution == 'RedHat' and ansible_distribution_major_version == '7'" }
+
+- name: install required packages (Redhat)
+  package: name={{ item }} state=present
+  with_items:
+    - yum-utils
+    - device-mapper-persistent-data
+    - lvm2
+
+- block:
+  - name: Add proxy from yum.conf
+    lineinfile: dest=/etc/yum.conf line="proxy={{ http_proxy }}" state=present
+    when: http_proxy is defined and cluster_provider|default() == "monsoon"
+
+  - name: Add the yum repo (provided by docker for versions >= 17)
+    shell: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    when: docker_repo == "official"
+
+  - name: Add the yum repo (for docker versions 1.xx)
+    template:
+      src: docker.repo.j2
+      dest: /etc/yum.repos.d/docker.repo
+    when: docker_repo == "community"
+
+  - name: remove proxy from yum.conf
+    lineinfile: dest=/etc/yum.conf line="proxy={{ http_proxy }}" state=absent
+    when: http_proxy is defined and cluster_provider|default() == "monsoon"
+
+- shell: yum clean all
+
+- name: Install docker package
+  shell: yum install -y docker-engine-{{ docker_version }}.*

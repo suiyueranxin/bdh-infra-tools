@@ -1,0 +1,120 @@
+---
+- block:
+  - name: create vsystem tls certs
+    shell: "kubectl -n {{ vora_kube_namespace }} create secret tls vsystem-tls-certs --key {{ role_path }}/files/key.pem --cert {{ role_path }}/files/crt.pem"
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    ignore_errors: yes
+    tags:
+      - install
+
+  - name: generate the ingress.yaml to tmp dir
+    template:
+      src: kops_ingress.yaml.j2
+      dest: "{{ installer_workspace }}/ingress_{{ kops_k8s_cluster_name }}.yaml"
+    tags:
+      - install
+
+  - name: deploy the ingress
+    shell: "kubectl create -n {{ vora_kube_namespace }} -f {{ installer_workspace }}/ingress_{{ kops_k8s_cluster_name }}.yaml"
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    tags:
+      - install
+
+  - name: wait until the ingress address is ready
+    shell: "kubectl describe ingress -n {{ vora_kube_namespace }}"
+    environment:
+      KUBECONFIG: "{{ kops_k8s_cluster_kubeconfig }}"
+    register: result_describe_ingress
+    until: result_describe_ingress.stdout | kops_get_ingress_address("Address") != ""
+    retries: 10 # Wait for 10 minutes max
+    delay: 60
+    tags:
+      - install
+
+  - debug:
+      msg: "the ingress address: {{ result_describe_ingress.stdout | kops_get_ingress_address('Address') }}"
+    tags:
+      - install
+
+  - name: create route53 recordset
+    route53:
+      command: create
+      zone: "{{ kops_dns_zone }}"
+      record: "{{ kops_k8s_cluster_name }}-kops.infra.{{ kops_dns_zone }}"
+      ttl: 300
+      type: "CNAME"
+      value: "{{ result_describe_ingress.stdout | kops_get_ingress_address('Address') }}"
+    tags:
+      - install
+
+  - debug:
+      msg: "The vsystem url is: https://{{ kops_k8s_cluster_name }}-kops.infra.{{ kops_dns_zone }}"
+    tags:
+      - install
+  when: expose_vsystem is defined and expose_vsystem == "yes"
+
+# expose tx-coordinator    
+- block:
+  - name: expose vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-tx-coordinator-ext --type LoadBalancer --name=tx-coordinator-service-ext --labels='datahub.sap.com/app=vora'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_txc_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch vora txc ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service tx-coordinator-service-ext service.beta.kubernetes.io/aws-load-balancer-internal='0.0.0.0/0' || true && \
+            kubectl -n {{vora_kube_namespace}} annotate service tx-coordinator-service-ext service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout='3600'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_txc_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_txc_result.stdout}}"
+    tags:
+      - install
+  when: expose_vora_txc is defined and expose_vora_txc == "yes"
+
+# expose text-analysis
+- block:
+  - name: expose text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} expose service vora-textanalysis --type LoadBalancer --name=text-analysis-service-ext"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: expose_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{expose_text_analysis_result.stdout}}"
+    tags:
+      - install
+
+  - name: patch text analysis ext
+    shell: "kubectl -n {{vora_kube_namespace}} annotate service text-analysis-service-ext service.beta.kubernetes.io/aws-load-balancer-internal='0.0.0.0/0' || true && \
+            kubectl -n {{vora_kube_namespace}} annotate service text-analysis-service-ext service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout='3600'"
+    environment:
+      "{{ installer_env }}"
+    ignore_errors: yes
+    register: patch_text_analysis_result
+    tags:
+      - install
+
+  - debug:
+      msg: "{{patch_text_analysis_result.stdout}}"
+    tags:
+      - install
+  when: expose_text_analysis is defined and expose_text_analysis == "yes"

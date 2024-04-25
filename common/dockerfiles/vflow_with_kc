@@ -1,0 +1,13 @@
+FROM di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/vflow_base:latest
+
+ARG KUBECTL_CLI_VERSION=1.13.8
+RUN curl -kLO https://storage.googleapis.com/kubernetes-release/release/v$KUBECTL_CLI_VERSION/bin/linux/amd64/kubectl && \
+    chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
+RUN sed -i -re 's/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list && \
+    apt-get update && apt-get -y dist-upgrade
+RUN apt-get update && apt-get -y install curl wget tar python2.7 python-pip git net-tools > /dev/null
+RUN pip install --upgrade pip && \
+    pip install --upgrade setuptools && \
+    pip install urllib3==1.25.3 && \
+    pip install kubernetes==10.0.1 && \
+    pip install requests==2.22.0 > /dev/null

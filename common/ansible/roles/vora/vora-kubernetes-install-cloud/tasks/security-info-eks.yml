@@ -1,0 +1,6 @@
+---
+security_json_file: "{{ role_path }}/SECURITY_JSON_FILE.json"
+aws_security_info: "{{ lookup('file',security_json_file) | from_json }}"
+aws_access_key: "{{ aws_security_info.AWS_ACCESS_KEY }}"
+aws_secret_key: "{{ aws_security_info.AWS_SECRET_KEY }}"
+aws_account: "{{ aws_security_info.AWS_ACCOUNT }}"

@@ -1,0 +1,14 @@
+---
+- include: install-dependencies.yaml
+  when: ansible_os_family == "Debian"
+
+- include: check-hadoop.yml
+  when: enable_storage_checkpoint == "yes"
+
+- include: deploy-hadoop.yml
+  when: enable_storage_checkpoint == "yes" and not hadoop_installed
+
+- include: prepare-vora-package.yml
+- include: install-vora.yml
+
+- include: import-docker-ssl-client-cert.yml

@@ -1,0 +1,21 @@
+- block:
+    - name: generate inifile for slcb execute cmd
+      template:
+        src: install_slcb_variables.j2
+        dest: "{{ installer_workspace }}/inifile"
+    - name: generate inifile for slcb execute cmd
+      template:
+        src: install_slcb_variables_auto_env.j2
+        dest: "{{ installer_workspace }}/inifile"
+      when: installer_validation is defined and installer_validation == "yes"
+    - name: Print out slcb configuration file
+      shell: "cat {{ installer_workspace }}/inifile"
+    - name: copy slcb inifile to playbook folder
+      fetch:
+        src: "{{ installer_workspace }}/inifile"
+        dest: inifile
+        flat: yes
+      ignore_errors: yes
+  tags:
+    - install
+    - update

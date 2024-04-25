@@ -1,0 +1,26 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: sync-e2e-tests-data
+spec:
+  schedule: "0 10 * * 6"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: sync-e2e-tests-data
+            image: di-dev-cicd-docker.int.repositories.cloud.sap/bdh-infra-tools/syncdata_bdhe2etests:v2
+            args:
+            - /bin/sh
+            - -c
+            - /tools/sync_data.sh
+            volumeMounts:
+            - mountPath: /remote
+              name: test-data
+          restartPolicy: OnFailure
+          volumes:
+          - name: test-data
+            hostPath:
+              path: /remote
+              type: Directory

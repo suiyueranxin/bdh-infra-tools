@@ -1,0 +1,146 @@
+---
+bucket_name_prefix: "im-datahub-checkpoints-"
+gardener_shoot_name: "default-shoot"
+vora_kube_namespace: "vora-{{gardener_shoot_name}}"
+gardener_aws_region: "eu-central-1"
+gardener_aws_s3_bucket_name: "{{bucket_name_prefix}}{{gardener_aws_region}}"
+gardener_aws_checkpoint_store_connection: "AccessKey={{aws_access_key}}&SecretAccessKey={{aws_secret_key}}&Region={{gardener_aws_region}}&Path={{gardener_aws_s3_bucket_name}}/{{gardener_aws_k8s_cluster_name}}"
+gardener_docker_registry: "990498310577.dkr.ecr.{{gardener_aws_region}}.amazonaws.com"
+installer_workspace: "/tmp/sapvora_random"
+gardener_iam_role: "arn:aws:iam::990498310577:role/shoot-garden-vora-{{ gardener_shoot_name }}-ecr.vora"
+gardener_tx_coordiator_node_port: "30343"
+gardener_hanawire_instance_number: "05"
+gardener_project_name: "datahub"
+gardener_dns_zone: "shoot.canary.k8s-hana.ondemand.com"
+gardener_dns_base: "ondemand.com"
+gardener_aws_cert_domain: "*.{{gardener_dns_zone}}"
+gardener_shoot_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/gardener/KUBECONFIG"
+proxy_https_gardener: "https://10.47.221.21:8888"
+vsystem_client_url: "https://int.repositories.cloud.sap/artifactory/deploy-releases/com/sap/hana/hl/linuxx86_64/hl-vsystem-client/2.3.64/hl-vsystem-client-2.3.64-linuxx86_64.tar.gz"
+azure_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/azure/KUBECONFIG"
+vora_username: system
+installer_workspace: /var
+vora_kube_namespace: vora
+
+#vora_kubernetes_local_pkg: /path/to/SAPVora-DistributedRuntime.tar.gz
+#vsystem_local_pkg: /path/to/bdh-assembly-vsystem.tar.gz
+
+sap_dh_bin_level: "milestone"
+vora_kube_suffix: 'Foundation'
+vora_kube_prefix_url: 'https://int.repositories.cloud.sap/artifactory/build-milestones/com/sap/datahub/SAPDataHub'
+vora_kube_download_url: '{{vora_kube_prefix_url}}/{{ vorapkg_version }}/SAPDataHub-{{ vorapkg_version }}-{{ vora_kube_suffix }}.tar.gz'
+vsystem_download_url: 'https://int.repositories.cloud.sap/artifactory/build-milestones-xmake/com/sap/bdh/bdh-assembly-vsystem/{{ vsystem_pkg_version }}/bdh-assembly-vsystem-{{ vsystem_pkg_version }}.tar.gz'
+
+vora_install_deployment_type: cloud
+enable_storage_checkpoint: "yes"
+
+gke_docker_registry_name: "eu.gcr.io"
+gcloud_project_id: "sap-p-and-i-big-data-vora"
+gcloud_docker_registry_suffix: ""
+gke_docker_registry_address: "{{ gke_docker_registry_name }}/{{ gcloud_project_id }}/{{ gcloud_docker_registry_suffix }}"
+gke_k8s_cluster_kubeconfig: "{{playbook_dir}}/../cloud/gcloud/KUBECONFIG"
+gke_domain_name: "vora-k8s"
+gke_storage_class: "multi_regional"
+gke_bucket_location: "eu"
+gke_bucket_name: "bdh_infra_bucket"
+gke_expose_ingress_at_route53: "yes"
+gke_change_ingress_timeout: "no"
+gke_ingress_timeout: 30
+
+
+kops_k8s_cluster_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/kops/KUBECONFIG"
+kops_aws_region: "eu-central-1"
+kops_dns_zone: "datahub.sapcloud.io"
+kops_docker_registry: "990498310577.dkr.ecr.{{kops_aws_region}}.amazonaws.com"
+kops_cert_domain: "*.infra.{{ kops_dns_zone }}"
+validationlog: "validationlog.zip"
+archive_logs: "install_logs_folder.zip"
+archive_tools: "tools.tgz"
+certs: "install_cert.tgz"
+kops_checkpoint_store_connection: "AccessKey={{aws_access_key}}&SecretAccessKey={{aws_secret_key}}&Region={{kops_aws_region}}&Path={{kops_k8s_cluster_name}}"
+
+
+eks_k8s_cluster_kubeconfig: "{{ role_path }}/../../../playbooks/cloud/eks/KUBECONFIG"
+eks_aws_region: "us-west-2"
+eks_aws_s3_bucket_name: "{{bucket_name_prefix}}{{eks_aws_region}}"
+eks_dns_zone: "datahub.sapcloud.io"
+eks_docker_registry: "990498310577.dkr.ecr.{{eks_aws_region}}.amazonaws.com"
+eks_cert_domain: "*.infra.{{ kops_dns_zone }}"
+validationlog: "validationlog.zip"
+archive_logs: "install_logs_folder.zip"
+eks_checkpoint_store_connection: "AccessKey={{aws_access_key}}&SecretAccessKey={{aws_secret_key}}&Region={{eks_aws_region}}&Path={{eks_aws_s3_bucket_name}}/{{eks_k8s_cluster_name}}"
+
+aks_storage_account_prefix: "dhvalckpt2"
+aks_storage_account_key: "placeholder"
+azure_resource_location: "westeurope"
+subscription_id: "PI Big Data Vora (SE)"
+client_id: "example"
+client_secret: "example"
+tenant: "example"
+aks_cluster_name: "vora-k8s"
+aks_cert_domain: "azmk8s.io"
+cert_domain: vora.sap.com
+azure_registry_name: infrabase
+azure_resource_group: bdh-infra
+acr_group: bdh-infra
+acr_name: infrabase
+aks_fast_deploy: yes
+vflow_azure_registry_option: ""
+aks_docker_install_registry: "{{ acr_name }}.azurecr.io"
+
+dns_suffix: infra.datahub.sapcloud.io
+docker_artifactory: public.int.repositories.cloud.sap
+artifactory_login_opt: "1"
+artifactory_login_username: bdhdev-read-only
+artifactory_login_password: zU94Gq982Pn7uWvM
+
+adl_url: adl://bhdinfra.azuredatalakestore.net/
+
+enable_k8s_discovery: "yes"
+vsystem_use_external_auth: "no"
+bdh_install_preflight_checks: "yes"
+enable_network_policies: "yes"
+enable_kaniko: " "
+
+expose_vsystem: "yes"
+expose_vora_txc: "no"
+expose_text_analysis: "no"
+bdh_one_node_installation: "no"
+
+hana_resources_requests_memory: "6Gi"
+hana_resources_limits_memory: "64Gi"
+
+install_vora_via_slplugin: "false"
+slplugin_log: "slplugin_log.zip"
+
+install_via_slcb: "false"
+slcb_log: "slcb_log.zip"
+
+slcb_version: "1.1.70"
+slcb_package_suffix: "zip"
+slc_ns: "slc-ns"
+slcb_download_url: "https://int.repositories.cloud.sap/artifactory/build-releases/com/sap/golang/lm/slplugin/slcb-linuxx86_64/{{slcb_version}}/slcb-linuxx86_64-{{slcb_version}}.{{slcb_package_suffix}}"
+
+slcb_default_bridge_admin_user: "admin"
+slcb_default_bridge_admin_password: "SlcBridge123."
+
+base_profile: "di-platform-extended"
+product_bridge_name: "com.sap.datahub.linuxx86_64/di-platform-extended-product-bridge"
+github_base_url: "{{ github_base_url}}"
+
+vorapkg_version_slcb_full_product_bridge: "2002.0.22"
+vora_password: "Sapvora123@"
+vora_system_tenant_password: "sAPVORA456@"
+
+on_premise_cluster_name: "{{ gardener_shoot_name }}"
+minio_client_url: "https://dl.min.io/client/mc/release/linux-amd64/mc"
+minio_access_key: "AKExample"
+minio_secret_key: "ENExample"
+minio_server: "{{ minio_url }}"
+minio_checkpoint_str: "Host={{minio_server}}&AccessKey={{minio_access_key}}&SecretAccessKey={{minio_secret_key}}&Path=checkpoints/{{gardener_shoot_name}}"
+gardener_docker_registry_address: "docker-registry.{{ gardener_shoot_name }}.{{ gardener_project_name }}.shoot.canary.k8s-hana.ondemand.com"
+gardener_k8s_cluster_kubeconfig: "{{ gardener_shoot_kubeconfig }}"
+
+gcloud_ssl_policy: "di-custom"
+
+enable_client_cert: "true"

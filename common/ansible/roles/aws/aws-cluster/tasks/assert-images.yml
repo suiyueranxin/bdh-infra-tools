@@ -1,0 +1,7 @@
+---
+- name: Assert if selected images are supported
+  assert:
+    that:
+    - "master_image in supported_aws_images_eu_central_1"
+    - "worker_image in supported_aws_images_eu_central_1"
+  when: aws_region == "eu-central-1"

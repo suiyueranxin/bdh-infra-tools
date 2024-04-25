@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    externalServiceType.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "3600"
+    externalServiceType.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/0
+  labels:
+    app: vora
+    vora-component: tx-coordinator
+  name: vora-tx-coordinator-ext
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - name: tc-ext
+    nodePort: 32048
+    port: 10004
+    protocol: TCP
+    targetPort: 10004
+  - name: hana-wire
+    nodePort: 30039
+    port: 30115
+    protocol: TCP
+    targetPort: 30115
+  selector:
+    app: vora
+    vora-component: tx-coordinator
+  sessionAffinity: None
+  type: LoadBalancer
+status:
+  loadBalancer: {}

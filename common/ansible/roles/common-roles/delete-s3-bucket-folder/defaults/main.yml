@@ -1,0 +1,4 @@
+---
+bucket_name_prefix: "im-datahub-checkpoints-"
+aws_region: eu-central-1
+s3_bucket_name: "{{bucket_name_prefix}}{{aws_region}}"

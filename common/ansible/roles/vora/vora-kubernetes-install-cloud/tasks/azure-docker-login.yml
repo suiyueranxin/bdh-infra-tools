@@ -1,0 +1,28 @@
+---
+- name: get credentials
+  azure:
+    resource_group_action: "get_credentials"
+    resource_group_name: "{{ azure_resource_group }}"
+    registry_name: "{{ azure_registry_name }}"
+    subscription_id: "{{ subscription_id }}"
+    client_id: "{{ client_id }}"
+    client_secret: "{{ client_secret }}"
+    tenant: "{{ tenant }}"
+  register: result_credentials
+
+- debug:
+    var: result_credentials
+
+#- name: generate the docker login script
+#  file:
+#    path: "{{ role_path }}/files/azure_docker_login.sh"
+#    mode: 0755
+
+- name: docker login
+  shell: "{{ role_path }}/files/azure_docker_login.sh {{ result_credentials.response.username }} {{ result_credentials.response.password }} {{ azure_registry_name }}"
+  register: result_docker_login
+  no_log: true
+
+- debug:
+    msg: "The result of docker login is: {{ result_docker_login.stdout }} {{ result_docker_login.stderr }}"
+

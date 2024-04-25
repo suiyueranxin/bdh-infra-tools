@@ -1,0 +1,23 @@
+FROM ubuntu:18.04
+
+ENV http_proxy=http://proxy.wdf.sap.corp:8080 \
+    https_proxy=http://proxy.wdf.sap.corp:8080 \
+    no_proxy=localhost,sap.corp,mo.sap.corp,cc.mo.sap.corp,sap.biz,cloud.sap,sap,cc.ondemand.com,moo-repo,moo-repo.wdf.sap.corp,repo,repo.wdf.sap.corp,169.254.169.254,127.0.0.1
+
+RUN apt-get update && apt-get install -y apt-transport-https ca-certificates curl software-properties-common git \
+    python-dev python-pip libssl-dev openssh-client -q && \
+    pip install --upgrade pip
+
+# Install Docker from Docker Inc. repositories.
+RUN curl -sSL https://get.docker.com/ | sh
+
+RUN pip install --no-cache-dir ansible==2.4.2 && \
+    pip install --no-cache-dir boto && \
+    pip install -U boto3==1.7.3 && \
+    pip install --no-cache-dir 'docker-py'==1.10.6 --ignore-installed && \
+    pip install --no-cache-dir pycrypto && \
+    pip install --no-cache-dir shade 
+
+RUN apt-get install -y dnsutils
+COPY hera/env/id_rsa hera/env/id_rsa.pub hera/env/known_hosts /root/.ssh/
+RUN chmod 600 /root/.ssh/id_rsa
